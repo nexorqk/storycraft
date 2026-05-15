@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import type { Book, BookStatus } from '@prisma/client';
+import type { Book, BookStatus, Job as PersistentJob } from '@prisma/client';
 import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 
 import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
@@ -39,6 +39,15 @@ export type PublicBook = {
     slug: string;
     title: string;
   };
+};
+
+type GenerationJobData = {
+  bookId: string;
+  persistentJobId: string;
+  status?: string;
+  completedPages?: number;
+  totalPages?: number;
+  error?: string;
 };
 
 @Injectable()
@@ -99,17 +108,11 @@ export class BooksService {
   async createBook(userId: string, dto: CreateBookDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { freeGenerationsUsed: true },
+      select: { id: true },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
-    }
-
-    if (user.freeGenerationsUsed >= FREE_PLAN_MONTHLY_BOOK_LIMIT) {
-      throw new BadRequestException(
-        `Free plan limit reached (${FREE_PLAN_MONTHLY_BOOK_LIMIT} books). Upgrade your plan to generate more books.`,
-      );
     }
 
     const child = await this.prisma.child.findFirst({
@@ -128,39 +131,125 @@ export class BooksService {
       throw new NotFoundException('Template not found or inactive');
     }
 
-    const book = await this.prisma.book.create({
-      data: {
-        userId,
-        childId: dto.childId,
-        templateId: dto.templateId,
-        title: dto.title?.trim() || null,
-        language: dto.language ?? 'ru',
-      },
-      include: {
-        child: { select: { id: true, name: true } },
-        template: { select: { id: true, slug: true, title: true } },
-      },
-    });
+    const { book, persistentJob } = await this.prisma.$transaction(
+      async (tx) => {
+        const usageUpdate = await tx.user.updateMany({
+          where: {
+            id: userId,
+            freeGenerationsUsed: { lt: FREE_PLAN_MONTHLY_BOOK_LIMIT },
+          },
+          data: { freeGenerationsUsed: { increment: 1 } },
+        });
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { freeGenerationsUsed: { increment: 1 } },
-    });
+        if (usageUpdate.count === 0) {
+          throw new BadRequestException(
+            `Free plan limit reached (${FREE_PLAN_MONTHLY_BOOK_LIMIT} books). Upgrade your plan to generate more books.`,
+          );
+        }
 
-    await this.generationQueue.add(
-      'generate-book',
-      { bookId: book.id },
-      {
-        jobId: `book-${book.id}`,
-        attempts: 2,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
+        const createdBook = await tx.book.create({
+          data: {
+            userId,
+            childId: dto.childId,
+            templateId: dto.templateId,
+            title: dto.title?.trim() || null,
+            language: dto.language ?? 'ru',
+          },
+          include: {
+            child: { select: { id: true, name: true } },
+            template: { select: { id: true, slug: true, title: true } },
+          },
+        });
+
+        const job = await tx.job.create({
+          data: {
+            type: 'GENERATE_BOOK',
+            status: 'QUEUED',
+            userId,
+            bookId: createdBook.id,
+            maxAttempts: 2,
+            payload: {
+              bookId: createdBook.id,
+              trigger: 'create-book',
+            },
+          },
+        });
+
+        return { book: createdBook, persistentJob: job };
       },
     );
 
+    try {
+      await this.enqueueGenerationJob(book.id, persistentJob.id);
+    } catch (error) {
+      const message = this.formatError(error);
+
+      await this.markQueueingFailed(persistentJob.id, book.id, message);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { freeGenerationsUsed: { decrement: 1 } },
+      });
+
+      throw error;
+    }
+
     return this.toPublicBook(book);
+  }
+
+  async triggerGeneration(userId: string, bookId: string) {
+    const book = await this.findOwnedBook(userId, bookId);
+
+    if (book.status === 'PROCESSING') {
+      throw new BadRequestException('Book is already being generated');
+    }
+
+    const persistentJob = await this.prisma.$transaction(async (tx) => {
+      await tx.book.update({
+        where: { id: bookId },
+        data: {
+          status: 'PENDING',
+          errorMessage: null,
+          completedAt: null,
+          pdfObjectKey: null,
+        },
+      });
+
+      await tx.illustration.deleteMany({
+        where: { bookId },
+      });
+
+      await tx.bookPage.deleteMany({
+        where: { bookId },
+      });
+
+      return tx.job.create({
+        data: {
+          type: 'GENERATE_BOOK',
+          status: 'QUEUED',
+          userId,
+          bookId,
+          maxAttempts: 2,
+          payload: {
+            bookId,
+            trigger: 'manual-retry',
+          },
+        },
+      });
+    });
+
+    try {
+      await this.enqueueGenerationJob(bookId, persistentJob.id);
+    } catch (error) {
+      const message = this.formatError(error);
+      await this.markQueueingFailed(persistentJob.id, bookId, message);
+      throw error;
+    }
+
+    return {
+      bookId,
+      jobId: persistentJob.id,
+      status: 'queued',
+    };
   }
 
   async getUsage(userId: string) {
@@ -194,10 +283,15 @@ export class BooksService {
   async getBookProgress(userId: string, bookId: string): Promise<BookProgress> {
     await this.findOwnedBook(userId, bookId);
 
-    const job = await this.generationQueue.getJob(`book-${bookId}`);
+    const persistentJob = await this.findLatestGenerationJob(bookId);
+    const job = persistentJob
+      ? await this.generationQueue.getJob(persistentJob.id)
+      : await this.generationQueue.getJob(`book-${bookId}`);
 
     if (!job) {
-      return { progress: 0, status: 'pending' };
+      return persistentJob
+        ? this.toProgressFromPersistentJob(persistentJob)
+        : { progress: 0, status: 'pending' };
     }
 
     const state = await job.getState();
@@ -212,7 +306,11 @@ export class BooksService {
       return {
         progress: progress ?? 0,
         status: 'failed',
-        error: (data.error as string) ?? 'Unknown error',
+        error:
+          (data.error as string | undefined) ??
+          job.failedReason ??
+          persistentJob?.errorMessage ??
+          'Unknown error',
       };
     }
 
@@ -221,6 +319,59 @@ export class BooksService {
       status: (data.status as string) ?? state,
       completedPages: data.completedPages as number | undefined,
       totalPages: data.totalPages as number | undefined,
+    };
+  }
+
+  async getGenerationJob(userId: string, jobId: string) {
+    const persistentJob = await this.prisma.job.findFirst({
+      where: {
+        id: jobId,
+        userId,
+        type: 'GENERATE_BOOK',
+      },
+    });
+
+    if (!persistentJob) {
+      throw new NotFoundException('Job not found');
+    }
+
+    const queueJob = await this.generationQueue.getJob(jobId);
+
+    if (!queueJob) {
+      const result = this.toRecord(persistentJob.result);
+
+      return {
+        id: persistentJob.id,
+        name: 'generate-book',
+        state: persistentJob.status.toLowerCase(),
+        progress: this.toProgressFromPersistentJob(persistentJob).progress,
+        data: persistentJob.payload,
+        attemptsMade: persistentJob.attempts,
+        processedOn: persistentJob.startedAt?.toISOString() ?? null,
+        finishedOn: persistentJob.completedAt?.toISOString() ?? null,
+        failedReason:
+          persistentJob.errorMessage ?? this.optionalString(result.error),
+      };
+    }
+
+    const state = await queueJob.getState();
+    const data = queueJob.data as Record<string, unknown>;
+    const progress = queueJob.progress as number;
+    const finishedOn = queueJob.finishedOn;
+    const processedOn = queueJob.processedOn;
+    const attemptsMade = queueJob.attemptsMade;
+    const failedReason = queueJob.failedReason;
+
+    return {
+      id: queueJob.id,
+      name: queueJob.name,
+      state,
+      progress,
+      data,
+      attemptsMade,
+      processedOn: processedOn ? new Date(processedOn).toISOString() : null,
+      finishedOn: finishedOn ? new Date(finishedOn).toISOString() : null,
+      failedReason: failedReason ?? persistentJob.errorMessage ?? null,
     };
   }
 
@@ -234,6 +385,99 @@ export class BooksService {
     }
 
     return book;
+  }
+
+  private async findLatestGenerationJob(bookId: string) {
+    return this.prisma.job.findFirst({
+      where: {
+        bookId,
+        type: 'GENERATE_BOOK',
+      },
+      orderBy: { queuedAt: 'desc' },
+    });
+  }
+
+  private enqueueGenerationJob(bookId: string, persistentJobId: string) {
+    return this.generationQueue.add(
+      'generate-book',
+      {
+        bookId,
+        persistentJobId,
+      } satisfies GenerationJobData,
+      {
+        jobId: persistentJobId,
+        attempts: 2,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    );
+  }
+
+  private async markQueueingFailed(
+    persistentJobId: string,
+    bookId: string,
+    message: string,
+  ) {
+    await this.prisma.$transaction([
+      this.prisma.job.update({
+        where: { id: persistentJobId },
+        data: {
+          status: 'FAILED',
+          errorMessage: message,
+          completedAt: new Date(),
+          result: {
+            status: 'failed',
+            error: message,
+          },
+        },
+      }),
+      this.prisma.book.update({
+        where: { id: bookId },
+        data: {
+          status: 'FAILED',
+          errorMessage: message,
+        },
+      }),
+    ]);
+  }
+
+  private toProgressFromPersistentJob(job: PersistentJob): BookProgress {
+    const result = this.toRecord(job.result);
+    const progress = this.optionalNumber(result.progress);
+
+    return {
+      progress:
+        progress ??
+        (job.status === 'COMPLETED'
+          ? 100
+          : job.status === 'PROCESSING'
+            ? 5
+            : 0),
+      status: job.status.toLowerCase(),
+      completedPages: this.optionalNumber(result.completedPages),
+      totalPages: this.optionalNumber(result.totalPages),
+      error: job.errorMessage ?? this.optionalString(result.error),
+    };
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  }
+
+  private optionalNumber(value: unknown) {
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  private optionalString(value: unknown) {
+    return typeof value === 'string' ? value : undefined;
+  }
+
+  private formatError(error: unknown) {
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 
   private toPublicBook(

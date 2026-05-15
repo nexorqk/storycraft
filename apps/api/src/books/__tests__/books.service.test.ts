@@ -7,19 +7,33 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
 
 const mockPrismaService = {
+  $transaction: jest.fn(),
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
   },
   book: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     findFirst: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn(),
+  },
+  bookPage: {
+    deleteMany: jest.fn(),
   },
   child: {
     findFirst: jest.fn(),
+  },
+  illustration: {
+    deleteMany: jest.fn(),
+  },
+  job: {
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    update: jest.fn(),
   },
   template: {
     findFirst: jest.fn(),
@@ -36,6 +50,15 @@ describe('BooksService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.$transaction.mockImplementation(async (arg: unknown) => {
+      if (typeof arg === 'function') {
+        return (arg as (tx: typeof mockPrismaService) => unknown)(
+          mockPrismaService,
+        );
+      }
+
+      return Promise.all(arg as Promise<unknown>[]);
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -102,7 +125,7 @@ describe('BooksService', () => {
 
     it('creates a book and enqueues generation when under limit', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
-        freeGenerationsUsed: 1,
+        id: 'user-1',
       });
       mockPrismaService.child.findFirst.mockResolvedValue({
         id: 'child-1',
@@ -126,21 +149,35 @@ describe('BooksService', () => {
         child: { id: 'child-1', name: 'Masha' },
         template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
       });
-      mockPrismaService.user.update.mockResolvedValue({});
+      mockPrismaService.user.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.job.create.mockResolvedValue({
+        id: 'persistent-job-1',
+      });
       mockQueue.add.mockResolvedValue({ id: 'job-1' });
 
       const result = await service.createBook('user-1', dto);
 
       expect(result.id).toBe('book-1');
-      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
+      expect(mockPrismaService.user.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'user-1',
+          freeGenerationsUsed: { lt: 3 },
+        },
         data: { freeGenerationsUsed: { increment: 1 } },
+      });
+      expect(mockPrismaService.job.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          type: 'GENERATE_BOOK',
+          status: 'QUEUED',
+          userId: 'user-1',
+          bookId: 'book-1',
+        }),
       });
       expect(mockQueue.add).toHaveBeenCalledWith(
         'generate-book',
-        { bookId: 'book-1' },
+        { bookId: 'book-1', persistentJobId: 'persistent-job-1' },
         {
-          jobId: 'book-book-1',
+          jobId: 'persistent-job-1',
           attempts: 2,
           backoff: { type: 'exponential', delay: 5000 },
         },
@@ -149,14 +186,22 @@ describe('BooksService', () => {
 
     it('throws BadRequestException when free plan limit is reached', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
-        freeGenerationsUsed: 3,
+        id: 'user-1',
       });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+      mockPrismaService.user.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(service.createBook('user-1', dto)).rejects.toThrow(
         BadRequestException,
       );
 
-      expect(mockPrismaService.child.findFirst).not.toHaveBeenCalled();
       expect(mockPrismaService.book.create).not.toHaveBeenCalled();
       expect(mockQueue.add).not.toHaveBeenCalled();
     });
@@ -171,7 +216,7 @@ describe('BooksService', () => {
 
     it('throws NotFoundException when child not found', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
-        freeGenerationsUsed: 0,
+        id: 'user-1',
       });
       mockPrismaService.child.findFirst.mockResolvedValue(null);
 
@@ -182,7 +227,7 @@ describe('BooksService', () => {
 
     it('throws NotFoundException when template not found or inactive', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
-        freeGenerationsUsed: 0,
+        id: 'user-1',
       });
       mockPrismaService.child.findFirst.mockResolvedValue({
         id: 'child-1',
@@ -197,7 +242,7 @@ describe('BooksService', () => {
 
     it('trims title and defaults language to ru', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
-        freeGenerationsUsed: 0,
+        id: 'user-1',
       });
       mockPrismaService.child.findFirst.mockResolvedValue({
         id: 'child-1',
@@ -220,7 +265,10 @@ describe('BooksService', () => {
         child: { id: 'child-1', name: 'Masha' },
         template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
       });
-      mockPrismaService.user.update.mockResolvedValue({});
+      mockPrismaService.user.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.job.create.mockResolvedValue({
+        id: 'persistent-job-1',
+      });
       mockQueue.add.mockResolvedValue({ id: 'job-1' });
 
       await service.createBook('user-1', {
@@ -236,6 +284,49 @@ describe('BooksService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('triggerGeneration', () => {
+    it('retries generation only for a book owned by the user', async () => {
+      mockPrismaService.book.findFirst.mockResolvedValue({
+        id: 'book-1',
+        status: 'FAILED',
+      });
+      mockPrismaService.book.update.mockResolvedValue({});
+      mockPrismaService.illustration.deleteMany.mockResolvedValue({});
+      mockPrismaService.bookPage.deleteMany.mockResolvedValue({});
+      mockPrismaService.job.create.mockResolvedValue({
+        id: 'persistent-job-2',
+      });
+      mockQueue.add.mockResolvedValue({ id: 'persistent-job-2' });
+
+      const result = await service.triggerGeneration('user-1', 'book-1');
+
+      expect(result).toEqual({
+        bookId: 'book-1',
+        jobId: 'persistent-job-2',
+        status: 'queued',
+      });
+      expect(mockPrismaService.book.findFirst).toHaveBeenCalledWith({
+        where: { id: 'book-1', userId: 'user-1' },
+      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'generate-book',
+        { bookId: 'book-1', persistentJobId: 'persistent-job-2' },
+        expect.objectContaining({ jobId: 'persistent-job-2' }),
+      );
+    });
+
+    it('does not enqueue generation when the user does not own the book', async () => {
+      mockPrismaService.book.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.triggerGeneration('user-1', 'book-1'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.job.create).not.toHaveBeenCalled();
+      expect(mockQueue.add).not.toHaveBeenCalled();
     });
   });
 
