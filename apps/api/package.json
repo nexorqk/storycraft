@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "pnpm typecheck",
-    "test": "echo \"No API tests configured yet\""
+    "test": "jest --verbose"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1047.0",
@@ -39,9 +39,13 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.1.21",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth20": "^2.0.17"
+    "@types/passport-google-oauth20": "^2.0.17",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.9"
   }
 }
