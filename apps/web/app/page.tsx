@@ -1,17 +1,19 @@
+import { AuthPanel } from './components/auth-panel';
+
 const sections = [
   {
     title: 'Child profiles',
-    body: 'Create parent-owned child profiles that will drive book personalization.',
+    body: 'Profiles for children connected to the signed-in parent account.',
     status: 'Planned',
   },
   {
     title: 'Book templates',
-    body: 'Seed Russian templates with story and illustration prompts for the MVP flow.',
+    body: 'Russian story structures with generation and illustration prompts.',
     status: 'Planned',
   },
   {
     title: 'Generation jobs',
-    body: 'Track asynchronous book, illustration, and PDF generation through persistent jobs.',
+    body: 'Persistent async state for books, illustrations, and PDFs.',
     status: 'Planned',
   },
 ];
@@ -41,15 +43,16 @@ export default function HomePage() {
         <header className="page-header">
           <div>
             <p className="eyebrow">MVP foundation</p>
-            <h1>Russian children book generation workspace</h1>
+            <h1>Storycraft workspace</h1>
             <p className="header-copy">
-              This first screen marks the product shell for the parent workflow:
-              profiles, templates, asynchronous generation, and downloadable
-              PDFs.
+              Russian children books, parent profiles, generation jobs, and
+              downloadable PDFs.
             </p>
           </div>
           <span className="status-pill">Free plan first</span>
         </header>
+
+        <AuthPanel />
 
         <div className="grid">
           {sections.map((section) => (

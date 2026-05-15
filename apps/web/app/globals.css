@@ -7,6 +7,7 @@
   --line: #d8dee8;
   --accent: #1f7a8c;
   --accent-strong: #145566;
+  --danger: #9f3a38;
   --warning: #b7791f;
   --success: #287d4f;
 }
@@ -132,6 +133,130 @@ h1 {
   white-space: nowrap;
 }
 
+.auth-panel {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  min-height: 92px;
+  padding: 20px;
+}
+
+.auth-panel-warning {
+  border-color: #e7c8c5;
+}
+
+.panel-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.auth-panel h2 {
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.primary-button,
+.secondary-button {
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 120px;
+  padding: 0 16px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.primary-button {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #ffffff;
+}
+
+.primary-button:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.secondary-button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.secondary-button:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.secondary-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.user-summary {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.user-avatar,
+.user-avatar-fallback {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 44px;
+  width: 44px;
+}
+
+.user-avatar {
+  object-fit: cover;
+}
+
+.user-avatar-fallback {
+  align-items: center;
+  background: #e3f2f3;
+  color: var(--accent-strong);
+  display: flex;
+  font-weight: 800;
+  justify-content: center;
+}
+
+.user-email {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.auth-skeleton {
+  background: linear-gradient(90deg, #eef1f4, #f8fafc, #eef1f4);
+  border-radius: 999px;
+  height: 40px;
+  width: 160px;
+}
+
 .grid {
   display: grid;
   gap: 16px;
@@ -184,6 +309,20 @@ h1 {
 
   .page-header {
     display: grid;
+  }
+
+  .auth-panel {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .auth-actions {
+    justify-content: stretch;
+  }
+
+  .primary-button,
+  .secondary-button {
+    width: 100%;
   }
 
   .grid {
