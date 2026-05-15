@@ -3,6 +3,8 @@ import { API_URL } from './auth-api';
 export type BookSummary = {
   id: string;
   title: string | null;
+  childNameInStory: string | null;
+  coverStyle: string;
   language: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   pdfObjectKey: string | null;
@@ -66,6 +68,8 @@ export async function createBook(dto: {
   childId: string;
   templateId: string;
   title?: string;
+  childNameInStory?: string;
+  coverStyle?: string;
   language?: string;
 }) {
   return request<{ book: BookSummary }>('/books', {

@@ -1,0 +1,2 @@
+ALTER TABLE "Book" ADD COLUMN "childNameInStory" TEXT;
+ALTER TABLE "Book" ADD COLUMN "coverStyle" TEXT NOT NULL DEFAULT 'default';

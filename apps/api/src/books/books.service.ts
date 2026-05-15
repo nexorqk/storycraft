@@ -23,6 +23,8 @@ export type BookProgress = {
 export type PublicBook = {
   id: string;
   title: string | null;
+  childNameInStory: string | null;
+  coverStyle: string;
   language: string;
   status: BookStatus;
   pdfObjectKey: string | null;
@@ -167,6 +169,8 @@ export class BooksService {
             childId: dto.childId,
             templateId: dto.templateId,
             title: dto.title?.trim() || null,
+            childNameInStory: dto.childNameInStory?.trim() || null,
+            coverStyle: dto.coverStyle ?? 'default',
             language: dto.language ?? 'ru',
           },
           include: {
@@ -562,6 +566,8 @@ export class BooksService {
     return {
       id: book.id,
       title: book.title,
+      childNameInStory: book.childNameInStory,
+      coverStyle: book.coverStyle,
       language: book.language,
       status: book.status,
       pdfObjectKey: book.pdfObjectKey,

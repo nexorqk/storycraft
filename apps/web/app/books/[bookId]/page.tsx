@@ -331,18 +331,33 @@ export default function BookDetailPage() {
           </div>
 
           <dl className="review-meta">
-            <div>
-              <dt>Child</dt>
-              <dd>{book.child.name}</dd>
-            </div>
-            <div>
-              <dt>Template</dt>
-              <dd>{book.template.title}</dd>
-            </div>
-            <div>
-              <dt>Language</dt>
-              <dd>{book.language.toUpperCase()}</dd>
-            </div>
+<div>
+                <dt>Child</dt>
+                <dd>{book.child.name}</dd>
+              </div>
+              {book.childNameInStory && (
+                <div>
+                  <dt>Name in story</dt>
+                  <dd>{book.childNameInStory}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Template</dt>
+                <dd>{book.template.title}</dd>
+              </div>
+              <div>
+                <dt>Style</dt>
+                <dd>
+                  {book.coverStyle === 'default'
+                    ? 'Default'
+                    : book.coverStyle.charAt(0).toUpperCase() +
+                      book.coverStyle.slice(1)}
+                </dd>
+              </div>
+              <div>
+                <dt>Language</dt>
+                <dd>{book.language.toUpperCase()}</dd>
+              </div>
             <div>
               <dt>Status</dt>
               <dd>{statusLabels[book.status]}</dd>

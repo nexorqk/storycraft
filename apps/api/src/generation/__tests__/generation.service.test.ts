@@ -45,6 +45,8 @@ const mockPdfService = {
 
 const mockBook = {
   id: 'book-1',
+  childNameInStory: null,
+  coverStyle: 'default',
   child: {
     id: 'child-1',
     name: 'Masha',
@@ -168,6 +170,66 @@ describe('GenerationService', () => {
           pdfObjectKey: 'books/book-1/book.pdf',
         }),
       });
+    });
+
+    it('uses childNameInStory when set, falling back to child name', async () => {
+      const bookWithCustomName = {
+        ...mockBook,
+        childNameInStory: 'Саша',
+        coverStyle: 'cartoon',
+      };
+
+      mockPrismaService.book.findUnique.mockResolvedValue(bookWithCustomName);
+      mockOpenAiProvider.generatePage.mockResolvedValue({
+        text: 'Story text',
+        illustrationPrompt: 'Illustration prompt',
+      });
+      mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
+      mockDallEProvider.generate.mockResolvedValue({
+        buffer: Buffer.from('img'),
+        mimeType: 'image/png',
+      });
+      mockStorageService.buildKey.mockReturnValue('illustrations/book-1/1.png');
+      mockStorageService.uploadFile.mockResolvedValue(undefined);
+      mockPrismaService.illustration.create.mockResolvedValue({ id: 'ill-1' });
+      mockPdfService.generateBookPdf.mockResolvedValue('books/book-1/book.pdf');
+      mockPrismaService.book.update.mockResolvedValue({});
+
+      await service.generateBook('book-1');
+
+      expect(mockOpenAiProvider.generatePage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          childName: 'Саша',
+          coverStyle: 'cartoon',
+        }),
+      );
+    });
+
+    it('uses child name when childNameInStory is null', async () => {
+      mockPrismaService.book.findUnique.mockResolvedValue(mockBook);
+      mockOpenAiProvider.generatePage.mockResolvedValue({
+        text: 'Story',
+        illustrationPrompt: 'Prompt',
+      });
+      mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
+      mockDallEProvider.generate.mockResolvedValue({
+        buffer: Buffer.from('img'),
+        mimeType: 'image/png',
+      });
+      mockStorageService.buildKey.mockReturnValue('illustrations/book-1/1.png');
+      mockStorageService.uploadFile.mockResolvedValue(undefined);
+      mockPrismaService.illustration.create.mockResolvedValue({ id: 'ill-1' });
+      mockPdfService.generateBookPdf.mockResolvedValue('books/book-1/book.pdf');
+      mockPrismaService.book.update.mockResolvedValue({});
+
+      await service.generateBook('book-1');
+
+      expect(mockOpenAiProvider.generatePage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          childName: 'Masha',
+          coverStyle: 'default',
+        }),
+      );
     });
 
     it('marks book as FAILED on error', async () => {

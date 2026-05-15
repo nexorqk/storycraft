@@ -68,7 +68,7 @@ export class PdfService {
 
     const pdfData: BookPdfData = {
       title: book.title || 'Сказка',
-      childName: book.child.name,
+      childName: book.childNameInStory || book.child.name,
       pages: pagesWithUrls,
     };
 

@@ -45,6 +45,11 @@ export class OpenAiProvider implements StoryProvider {
   }
 
   private buildSystemPrompt(request: StoryPageRequest): string {
+    const illustrationStyle =
+      request.coverStyle === 'default'
+        ? request.templateIllustrationStylePrompt
+        : this.coverStyleLabel(request.coverStyle);
+
     return [
       "You are a children's book author writing in Russian.",
       '',
@@ -59,8 +64,17 @@ export class OpenAiProvider implements StoryProvider {
       '- Keep the tone warm and encouraging.',
       '- Do not include any meta-commentary or explanations.',
       '',
-      `Illustration style: ${request.templateIllustrationStylePrompt}`,
+      `Illustration style: ${illustrationStyle}`,
     ].join('\n');
+  }
+
+  private coverStyleLabel(style: string): string {
+    const labels: Record<string, string> = {
+      watercolor: 'Soft watercolor illustration style, gentle colors, hand-painted feel',
+      cartoon: 'Bright cartoon illustration style, bold outlines, vivid colors',
+      realistic: 'Realistic illustration style, detailed, natural lighting',
+    };
+    return labels[style] ?? style;
   }
 
   private buildUserPrompt(request: StoryPageRequest): string {

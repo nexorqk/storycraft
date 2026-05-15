@@ -40,11 +40,12 @@ export class GenerationService {
     const totalPages = book.template.pages.length;
 
     try {
-      const childName = book.child.name;
+      const childName = book.childNameInStory || book.child.name;
       const childAge = book.child.birthDate
         ? this.calculateAge(book.child.birthDate)
         : null;
       const childInterests = book.child.interests;
+      const coverStyle = book.coverStyle;
 
       const generatedPages: StoryPageResult[] = [];
 
@@ -56,6 +57,7 @@ export class GenerationService {
           templateStoryPrompt: book.template.storyPrompt,
           templateIllustrationStylePrompt:
             book.template.illustrationStylePrompt,
+          coverStyle,
           pageNumber: templatePage.pageNumber,
           pageTextPrompt: templatePage.textPrompt,
           previousPages: generatedPages.map((p) => p.text),

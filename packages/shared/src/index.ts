@@ -21,3 +21,12 @@ export const JOB_STATUSES = [
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const FREE_PLAN_MONTHLY_BOOK_LIMIT = 3;
+
+export const COVER_STYLES = [
+  'default',
+  'watercolor',
+  'cartoon',
+  'realistic',
+] as const;
+
+export type CoverStyle = (typeof COVER_STYLES)[number];

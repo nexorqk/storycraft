@@ -4,6 +4,7 @@ export type StoryPageRequest = {
   childInterests: string[];
   templateStoryPrompt: string;
   templateIllustrationStylePrompt: string;
+  coverStyle: string;
   pageNumber: number;
   pageTextPrompt: string;
   previousPages: string[];

@@ -89,6 +89,8 @@ function CreateBookContent() {
         childId: form.childId,
         templateId: form.templateId,
         title: form.title || undefined,
+        childNameInStory: form.childNameInStory || undefined,
+        coverStyle: form.coverStyle,
         language: form.language,
       });
 

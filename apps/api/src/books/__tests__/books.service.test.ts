@@ -88,6 +88,8 @@ describe('BooksService', () => {
         {
           id: 'book-1',
           title: 'Test Book',
+          childNameInStory: null,
+          coverStyle: 'default',
           language: 'ru',
           status: 'COMPLETED',
           pdfObjectKey: 'books/book-1/book.pdf',
@@ -150,6 +152,8 @@ describe('BooksService', () => {
       mockPrismaService.book.create.mockResolvedValue({
         id: 'book-1',
         title: 'My Book',
+        childNameInStory: null,
+        coverStyle: 'default',
         language: 'ru',
         status: 'PENDING',
         pdfObjectKey: null,
@@ -259,6 +263,8 @@ describe('BooksService', () => {
       mockPrismaService.book.create.mockResolvedValue({
         id: 'book-1',
         title: 'Trimmed',
+        childNameInStory: null,
+        coverStyle: 'default',
         language: 'ru',
         status: 'PENDING',
         pdfObjectKey: null,
@@ -289,6 +295,55 @@ describe('BooksService', () => {
       );
     });
 
+    it('defaults coverStyle to "default" and passes childNameInStory when provided', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+      mockPrismaService.book.create.mockResolvedValue({
+        id: 'book-1',
+        title: 'My Book',
+        childNameInStory: 'Саша',
+        coverStyle: 'watercolor',
+        language: 'ru',
+        status: 'PENDING',
+        pdfObjectKey: null,
+        errorMessage: null,
+        completedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        child: { id: 'child-1', name: 'Masha' },
+        template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
+      });
+      mockPrismaService.job.create.mockResolvedValue({
+        id: 'persistent-job-1',
+      });
+      mockQueue.add.mockResolvedValue({ id: 'job-1' });
+
+      await service.createBook('user-1', {
+        childId: 'child-1',
+        templateId: 'template-1',
+        childNameInStory: '  Саша  ',
+        coverStyle: 'watercolor',
+      });
+
+      expect(mockPrismaService.book.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            childNameInStory: 'Саша',
+            coverStyle: 'watercolor',
+          }),
+        }),
+      );
+    });
+
     it('uses an atomic monthly usage update for concurrent generation requests', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-05-15T12:00:00.000Z'));
       mockPrismaService.user.findUnique.mockResolvedValue({
@@ -305,6 +360,8 @@ describe('BooksService', () => {
       mockPrismaService.book.create.mockResolvedValue({
         id: 'book-1',
         title: 'My Book',
+        childNameInStory: null,
+        coverStyle: 'default',
         language: 'ru',
         status: 'PENDING',
         pdfObjectKey: null,

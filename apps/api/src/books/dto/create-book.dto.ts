@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { COVER_STYLES } from '@storycraft/shared';
 
 export class CreateBookDto {
   @IsUUID()
@@ -11,6 +12,16 @@ export class CreateBookDto {
   @IsString()
   @MaxLength(200)
   title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  childNameInStory?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(COVER_STYLES)
+  coverStyle?: string;
 
   @IsOptional()
   @IsString()
