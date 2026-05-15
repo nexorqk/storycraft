@@ -28,7 +28,7 @@ services:
       retries: 5
 
   garage:
-    image: dxflrs/garage:v1.0.0
+    image: dxflrs/garage:v1.1.0
     ports:
       - '3900:3900'
       - '3901:3901'
@@ -37,7 +37,7 @@ services:
     volumes:
       - garage_data:/var/lib/garage
       - ./infra/garage/garage.toml:/etc/garage.toml:ro
-    command: ['server']
+    command: ['/garage', 'server']
 
 volumes:
   postgres_data:
