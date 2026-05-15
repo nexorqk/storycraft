@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 
 import {
   fetchCurrentUser,
-  getGoogleAuthUrl,
   logoutCurrentUser,
   type PublicUser,
 } from '../../lib/auth-api';
@@ -45,7 +44,7 @@ export function AuthPanel() {
   }, []);
 
   function signIn() {
-    window.location.assign(getGoogleAuthUrl());
+    window.location.assign('/login');
   }
 
   async function logout() {

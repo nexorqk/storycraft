@@ -141,3 +141,33 @@ export async function deleteAdminTemplatePage(
     },
   );
 }
+
+export async function uploadTemplateCover(
+  templateId: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/admin/templates/${templateId}/cover`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message ?? 'Failed to upload cover image');
+  }
+
+  return (await response.json()) as { template: AdminTemplateSummary };
+}
+
+export async function getTemplateCoverUrl(templateId: string) {
+  return request<{ url: string | null }>(
+    `/admin/templates/${templateId}/cover-url`,
+  );
+}

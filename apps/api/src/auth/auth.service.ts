@@ -36,7 +36,7 @@ export class AuthService {
   }
 
   getPostLoginRedirectUrl() {
-    return this.config.getOrThrow<string>('WEB_ORIGIN');
+    return `${this.config.getOrThrow<string>('WEB_ORIGIN')}/auth/callback`;
   }
 
   async createSessionToken(userId: string) {

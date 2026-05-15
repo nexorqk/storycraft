@@ -115,6 +115,7 @@ model Template {
   slug                    String         @unique
   title                   String
   description             String?
+  coverImageKey           String?
   language                String         @default("ru")
   ageMin                  Int?
   ageMax                  Int?

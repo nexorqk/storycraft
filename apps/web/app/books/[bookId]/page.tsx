@@ -11,6 +11,7 @@ import {
   generateBook,
   getBookProgress,
   getPdfUrl,
+  getIllustrationUrls,
 } from '../../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
@@ -37,6 +38,7 @@ export default function BookDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [illustrationUrls, setIllustrationUrls] = useState<Record<string, string>>({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBook = useCallback(() => {
@@ -52,6 +54,20 @@ export default function BookDetailPage() {
               .then((pdfData) => {
                 if (!cancelled) {
                   setPdfUrl(pdfData.url);
+                }
+              })
+              .catch(() => {});
+          }
+
+          const completedIlls = data.book.illustrations.filter(
+            (ill) => ill.status === 'COMPLETED' && ill.objectKey,
+          );
+
+          if (completedIlls.length > 0) {
+            getIllustrationUrls(bookId)
+              .then((illData) => {
+                if (!cancelled) {
+                  setIllustrationUrls(illData.urls);
                 }
               })
               .catch(() => {});
@@ -308,19 +324,35 @@ export default function BookDetailPage() {
             </p>
           ) : (
             <ol className="catalog-pages-list">
-              {book.pages.map((page) => (
-                <li key={page.id} className="catalog-page-item">
-                  <span className="catalog-page-num">{page.pageNumber}</span>
-                  <div>
-                    <p className="catalog-page-text">{page.text}</p>
-                    {page.illustrationPrompt && (
-                      <p className="catalog-page-illust">
-                        🎨 {page.illustrationPrompt}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {book.pages.map((page) => {
+                const ill = book.illustrations.find(
+                  (i) => i.pageNumber === page.id,
+                );
+                const illUrl = ill ? illustrationUrls[ill.id] : null;
+
+                return (
+                  <li key={page.id} className="catalog-page-item">
+                    <span className="catalog-page-num">{page.pageNumber}</span>
+                    <div className="catalog-page-content">
+                      <p className="catalog-page-text">{page.text}</p>
+                      {illUrl && (
+                        <div className="catalog-page-illustration">
+                          <img
+                            src={illUrl}
+                            alt={`Illustration for page ${page.pageNumber}`}
+                            className="illustration-image"
+                          />
+                        </div>
+                      )}
+                      {page.illustrationPrompt && (
+                        <p className="catalog-page-illust">
+                          🎨 {page.illustrationPrompt}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           )}
         </div>

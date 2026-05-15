@@ -51,6 +51,24 @@ export class BooksController {
     return { progress: await this.books.getBookProgress(user.id, bookId) };
   }
 
+  @Get(':bookId/illustration-urls')
+  async getIllustrationUrls(
+    @CurrentUser() user: PublicUser,
+    @Param('bookId', new ParseUUIDPipe()) bookId: string,
+  ) {
+    const book = await this.books.getBook(user.id, bookId);
+
+    const urls: Record<string, string> = {};
+
+    for (const ill of book.illustrations) {
+      if (ill.objectKey) {
+        urls[ill.id] = await this.storage.getSignedDownloadUrl(ill.objectKey, 86400);
+      }
+    }
+
+    return { urls };
+  }
+
   @Get(':bookId/pdf-url')
   async getPdfUrl(
     @CurrentUser() user: PublicUser,

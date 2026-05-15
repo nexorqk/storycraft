@@ -17,6 +17,8 @@ import {
   createAdminTemplatePage,
   updateAdminTemplatePage,
   deleteAdminTemplatePage,
+  uploadTemplateCover,
+  getTemplateCoverUrl,
 } from '../../../lib/admin-templates-api';
 
 type ListView = { view: 'list' };
@@ -496,6 +498,8 @@ function TemplateDetail({
   const [template, setTemplate] = useState<AdminTemplateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [newPage, setNewPage] = useState({
     pageNumber: 1,
     textPrompt: '',
@@ -511,6 +515,10 @@ function TemplateDetail({
         setError(err instanceof Error ? err.message : 'Failed to load template'),
       )
       .finally(() => setLoading(false));
+
+    getTemplateCoverUrl(templateId)
+      .then((data) => setCoverUrl(data.url))
+      .catch(() => {});
   }, [templateId]);
 
   useEffect(() => load(), [load]);
@@ -564,6 +572,24 @@ function TemplateDetail({
       );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete page');
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    setError(null);
+
+    try {
+      await uploadTemplateCover(templateId, file);
+      const data = await getTemplateCoverUrl(templateId);
+      setCoverUrl(data.url);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to upload cover');
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -639,6 +665,32 @@ function TemplateDetail({
             </dd>
           </div>
         </dl>
+      </div>
+
+      <div className="panel">
+        <div className="section-heading section-heading-row">
+          <h2>Cover Image</h2>
+        </div>
+
+        {coverUrl && (
+          <div className="cover-preview">
+            <img src={coverUrl} alt="Template cover" className="cover-image" />
+          </div>
+        )}
+
+        <div className="cover-upload">
+          <label className="cover-upload-btn">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleCoverUpload}
+              disabled={uploadingCover}
+              hidden
+            />
+            {uploadingCover ? 'Uploading...' : coverUrl ? 'Change Cover' : 'Upload Cover'}
+          </label>
+          <p className="cover-note">JPEG, PNG, or WebP. Max 5MB.</p>
+        </div>
       </div>
 
       <div className="panel">

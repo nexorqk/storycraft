@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Template, TemplatePage } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../storage/storage.service';
 import type { CreateAdminTemplateDto } from './dto/create-admin-template.dto';
 import type { UpdateAdminTemplateDto } from './dto/update-admin-template.dto';
 import type { CreateAdminTemplatePageDto } from './pages/dto/create-admin-template-page.dto';
@@ -35,7 +40,10 @@ export type AdminTemplatePage = {
 
 @Injectable()
 export class AdminTemplatesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async listTemplates() {
     const templates = await this.prisma.template.findMany({
@@ -123,6 +131,60 @@ export class AdminTemplatesService {
     await this.prisma.template.delete({
       where: { id: templateId },
     });
+  }
+
+  async uploadCoverImage(templateId: string, file: Express.Multer.File) {
+    const existing = await this.prisma.template.findUnique({
+      where: { id: templateId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Template not found');
+    }
+
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only JPEG, PNG, and WebP images are allowed');
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size must be less than 5MB');
+    }
+
+    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const objectKey = this.storage.buildKey('template-covers', `${templateId}.${ext}`);
+
+    await this.storage.uploadFile(objectKey, file.buffer, file.mimetype);
+
+    const template = await this.prisma.template.update({
+      where: { id: templateId },
+      data: { coverImageKey: objectKey },
+    });
+
+    return this.toPublicSummary(template);
+  }
+
+  async getCoverImageUrl(templateId: string) {
+    const template = await this.prisma.template.findUnique({
+      where: { id: templateId },
+      select: { coverImageKey: true },
+    });
+
+    if (!template) {
+      throw new NotFoundException('Template not found');
+    }
+
+    if (!template.coverImageKey) {
+      return { url: null };
+    }
+
+    const url = await this.storage.getSignedDownloadUrl(template.coverImageKey, 86400);
+    return { url };
   }
 
   private toPublicSummary(template: Template) {

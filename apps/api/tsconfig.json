@@ -14,7 +14,7 @@
     "baseUrl": ".",
     "incremental": true,
     "strictPropertyInitialization": false,
-    "types": ["node"],
+    "types": ["node", "multer"],
     "jsx": "react-jsx"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

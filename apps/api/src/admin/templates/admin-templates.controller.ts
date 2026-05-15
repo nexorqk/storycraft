@@ -8,11 +8,15 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import { Roles } from '../../auth/roles.decorator';
 import { RolesGuard } from '../../auth/roles.guard';
+import { StorageService } from '../../storage/storage.service';
 import { AdminTemplatesService } from './admin-templates.service';
 import { CreateAdminTemplateDto } from './dto/create-admin-template.dto';
 import { UpdateAdminTemplateDto } from './dto/update-admin-template.dto';
@@ -57,5 +61,21 @@ export class AdminTemplatesController {
   ) {
     await this.templates.deleteTemplate(templateId);
     return { ok: true };
+  }
+
+  @Post(':templateId/cover')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCover(
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.templates.uploadCoverImage(templateId, file);
+  }
+
+  @Get(':templateId/cover-url')
+  async getCoverUrl(
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
+  ) {
+    return this.templates.getCoverImageUrl(templateId);
   }
 }

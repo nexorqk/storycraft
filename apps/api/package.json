@@ -46,6 +46,7 @@
     "@types/express": "^5.0.6",
     "@types/helmet": "^4.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.1.0",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "jest": "^30.4.2",
