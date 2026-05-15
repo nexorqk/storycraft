@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import type { Book, BookStatus } from '@prisma/client';
+import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 
 import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
 import { PrismaService } from '../prisma/prisma.service';
@@ -92,6 +97,21 @@ export class BooksService {
   }
 
   async createBook(userId: string, dto: CreateBookDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { freeGenerationsUsed: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.freeGenerationsUsed >= FREE_PLAN_MONTHLY_BOOK_LIMIT) {
+      throw new BadRequestException(
+        `Free plan limit reached (${FREE_PLAN_MONTHLY_BOOK_LIMIT} books). Upgrade your plan to generate more books.`,
+      );
+    }
+
     const child = await this.prisma.child.findFirst({
       where: { id: dto.childId, userId },
     });
@@ -122,6 +142,11 @@ export class BooksService {
       },
     });
 
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { freeGenerationsUsed: { increment: 1 } },
+    });
+
     await this.generationQueue.add(
       'generate-book',
       { bookId: book.id },
@@ -136,6 +161,26 @@ export class BooksService {
     );
 
     return this.toPublicBook(book);
+  }
+
+  async getUsage(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { freeGenerationsUsed: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      used: user.freeGenerationsUsed,
+      limit: FREE_PLAN_MONTHLY_BOOK_LIMIT,
+      remaining: Math.max(
+        0,
+        FREE_PLAN_MONTHLY_BOOK_LIMIT - user.freeGenerationsUsed,
+      ),
+    };
   }
 
   async deleteBook(userId: string, bookId: string) {

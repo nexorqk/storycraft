@@ -20,4 +20,4 @@ export const JOB_STATUSES = [
 
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export const FREE_PLAN_MONTHLY_BOOK_LIMIT = 1;
+export const FREE_PLAN_MONTHLY_BOOK_LIMIT = 3;

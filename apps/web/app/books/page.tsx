@@ -10,6 +10,7 @@ import {
   deleteBook,
   getBookProgress,
   getPdfUrl,
+  getBooksUsage,
 } from '../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
@@ -37,17 +38,23 @@ export default function BooksPage() {
     >
   >({});
   const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
+  const [usage, setUsage] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+  } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBooks = useCallback(() => {
     let cancelled = false;
 
-    listBooks()
-      .then((data) => {
+    Promise.all([listBooks(), getBooksUsage()])
+      .then(([booksData, usageData]) => {
         if (!cancelled) {
-          setBooks(data.books);
+          setBooks(booksData.books);
+          setUsage(usageData.usage);
 
-          const completedBooks = data.books.filter(
+          const completedBooks = booksData.books.filter(
             (b) => b.status === 'COMPLETED' && b.pdfObjectKey,
           );
 
@@ -151,9 +158,19 @@ export default function BooksPage() {
             View and manage your generated children&apos;s books.
           </p>
         </div>
-        <a href="/create" className="primary-button">
-          Create New
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {usage && (
+            <div className="usage-badge">
+              <span className="usage-count">{usage.remaining}</span>
+              <span className="usage-label">
+                {usage.remaining === 1 ? 'generation left' : 'generations left'}
+              </span>
+            </div>
+          )}
+          <a href="/create" className="primary-button">
+            Create New
+          </a>
+        </div>
       </header>
 
       <AuthPanel />

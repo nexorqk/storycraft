@@ -995,6 +995,29 @@ h1 {
   font-size: 13px;
 }
 
+.usage-badge {
+  align-items: center;
+  background: #e3f2f3;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+
+.usage-count {
+  color: var(--accent-strong);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.usage-label {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;

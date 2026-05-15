@@ -30,6 +30,11 @@ export class BooksController {
     return { books: await this.books.listBooks(user.id) };
   }
 
+  @Get('usage')
+  async getUsage(@CurrentUser() user: PublicUser) {
+    return { usage: await this.books.getUsage(user.id) };
+  }
+
   @Get(':bookId')
   async getBook(
     @CurrentUser() user: PublicUser,

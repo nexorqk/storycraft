@@ -104,3 +104,13 @@ export async function getBookProgress(bookId: string) {
 export async function getPdfUrl(bookId: string) {
   return request<{ url: string | null }>(`/books/${bookId}/pdf-url`);
 }
+
+export async function getBooksUsage() {
+  return request<{
+    usage: {
+      used: number;
+      limit: number;
+      remaining: number;
+    };
+  }>('/books/usage');
+}

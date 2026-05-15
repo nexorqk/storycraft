@@ -9,7 +9,7 @@ import type { ChildProfile } from '../../lib/children-api';
 import { listChildren } from '../../lib/children-api';
 import type { TemplateInfo } from '../../lib/templates-api';
 import { listTemplates } from '../../lib/templates-api';
-import { createBook } from '../../lib/books-api';
+import { createBook, getBooksUsage } from '../../lib/books-api';
 
 type FormState = {
   childId: string;
@@ -38,6 +38,11 @@ function CreateBookContent() {
   });
   const [error, setError] = useState<string | null>(null);
   const [createdBookId, setCreatedBookId] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+  } | null>(null);
 
   useEffect(() => {
     const preselectedTemplate = searchParams.get('templateId');
@@ -49,11 +54,12 @@ function CreateBookContent() {
   const loadData = useCallback(() => {
     let cancelled = false;
 
-    Promise.all([listChildren(), listTemplates()])
-      .then(([c, t]) => {
+    Promise.all([listChildren(), listTemplates(), getBooksUsage()])
+      .then(([c, t, u]) => {
         if (!cancelled) {
           setChildren(c.children);
           setTemplates(t);
+          setUsage(u.usage);
         }
       })
       .catch((err: unknown) => {
@@ -153,6 +159,14 @@ function CreateBookContent() {
             children&apos;s book.
           </p>
         </div>
+        {usage && (
+          <div className="usage-badge">
+            <span className="usage-count">{usage.remaining}</span>
+            <span className="usage-label">
+              {usage.remaining === 1 ? 'generation left' : 'generations left'}
+            </span>
+          </div>
+        )}
       </header>
 
       <AuthPanel />
