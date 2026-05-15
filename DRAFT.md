@@ -3,8 +3,8 @@ in PDF format. The target audience is the children's parents, who want to create
 customized books with useful and educational stories for their children.
 
 The technology stack is NestJS for the backend, Next.js for the frontend, Prisma
-for database access, Redis, and Garage for S3-compatible storage. You should
-propose the architectural decisions.
+for database access, Redis and BullMQ for queues, and Garage for S3-compatible
+storage. You should propose the architectural decisions.
 
 Authentication must be implemented through Google.
 

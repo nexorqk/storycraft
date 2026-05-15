@@ -4,35 +4,50 @@ Guidance for Codex and other AI coding agents working in this repository.
 
 ## Project Context
 
-Storycraft is an early-stage AI SaaS project. The technical stack, build commands,
-test commands, deployment flow, and project structure are not established yet.
+Storycraft is an early-stage AI SaaS project for generating Russian children's
+books in PDF format.
 
-Do not invent project conventions. When a stack or workflow is added, update this
-file with the exact commands and constraints agents should follow.
+The repository is a pnpm monorepo:
+
+- `apps/api`: NestJS backend.
+- `apps/web`: Next.js frontend.
+- `packages/db`: Prisma schema, seed, and database package.
+- `packages/shared`: shared TypeScript constants and types.
 
 ## Working Rules
 
 - Inspect the repository before making changes.
 - Keep edits small, focused, and tied to the user's request.
 - Prefer existing project patterns once they exist.
-- Do not assume frameworks, package managers, services, database choices, or test
-  commands until they are present in the repo.
+- Use pnpm for package management.
+- Use the existing NestJS, Next.js, Prisma, PostgreSQL, Redis, BullMQ, and
+  S3-compatible storage conventions.
 - Do not perform destructive operations unless the user explicitly asks for them.
 - Preserve user work and unrelated local changes.
 - Do not modify generated, vendored, or build output files unless the task clearly
   requires it.
+- After each major implementation slice, commit the completed result before
+  starting the next large slice, unless the user asks not to.
 
 ## Development Commands
 
-No canonical commands are defined yet.
+- Install dependencies: `pnpm install`.
+- Generate Prisma client: `pnpm db:generate`.
+- Run local infrastructure: `docker compose up -d postgres redis garage`.
+- Run both apps locally: `pnpm dev`.
+- Run API only: `pnpm dev:api`.
+- Run web only: `pnpm dev:web`.
+- Typecheck all packages: `pnpm typecheck`.
+- Build all packages: `pnpm build`.
+- Run configured tests: `pnpm test`.
+- Check formatting: `pnpm format:check`.
+- Format files: `pnpm format`.
 
-When commands are introduced, document them here. Include at minimum:
+Database commands:
 
-- how to install dependencies;
-- how to run the app locally;
-- how to run tests;
-- how to run linting or formatting;
-- how to build for production.
+- Create and apply a local migration: `pnpm db:migrate`.
+- Seed local data: `pnpm db:seed`.
+- Open Prisma Studio: `pnpm db:studio`.
 
 ## Verification
 

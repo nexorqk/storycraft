@@ -1,0 +1,26 @@
+{
+  "name": "storycraft",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @storycraft/api --filter @storycraft/web dev",
+    "dev:api": "pnpm --filter @storycraft/api dev",
+    "dev:web": "pnpm --filter @storycraft/web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @storycraft/db prisma:generate",
+    "db:migrate": "pnpm --filter @storycraft/db prisma:migrate",
+    "db:seed": "pnpm --filter @storycraft/db prisma:seed",
+    "db:studio": "pnpm --filter @storycraft/db prisma:studio"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.9.0"
+  }
+}

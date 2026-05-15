@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum IllustrationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobType {
+  GENERATE_BOOK
+  GENERATE_ILLUSTRATION
+  GENERATE_PDF
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  INCOMPLETE
+  PAST_DUE
+  TRIALING
+}
+
+model User {
+  id                  String            @id @default(uuid()) @db.Uuid
+  email               String            @unique
+  name                String?
+  avatarUrl           String?
+  googleId            String            @unique
+  locale              String            @default("ru")
+  freeGenerationsUsed Int               @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  books               Book[]
+  children            Child[]
+  jobs                Job[]
+  paymentCustomers    PaymentCustomer[]
+  ratings             Rating[]
+  referrals           Referral[]        @relation("Referrer")
+  referredBy          Referral[]        @relation("ReferredUser")
+  subscriptions       Subscription[]
+
+  @@index([email])
+}
+
+model Child {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  name         String
+  birthDate    DateTime?
+  interests    String[]
+  readingLevel String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  books        Book[]
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Template {
+  id                      String   @id @default(uuid()) @db.Uuid
+  slug                    String   @unique
+  title                   String
+  description             String?
+  language                String   @default("ru")
+  ageMin                  Int?
+  ageMax                  Int?
+  pageCount               Int      @default(8)
+  storyPrompt             String
+  illustrationStylePrompt String
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  books                   Book[]
+
+  @@index([language, isActive])
+}
+
+model Book {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String         @db.Uuid
+  childId      String         @db.Uuid
+  templateId   String         @db.Uuid
+  title        String?
+  language     String         @default("ru")
+  status       BookStatus     @default(PENDING)
+  pdfObjectKey String?
+  errorMessage String?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  child        Child          @relation(fields: [childId], references: [id], onDelete: Restrict)
+  illustrations Illustration[]
+  jobs         Job[]
+  pages        BookPage[]
+  template     Template       @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([childId])
+  @@index([templateId])
+}
+
+model BookPage {
+  id                 String        @id @default(uuid()) @db.Uuid
+  bookId             String        @db.Uuid
+  pageNumber         Int
+  text               String
+  illustrationPrompt String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  book               Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  illustration       Illustration?
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+}
+
+model Illustration {
+  id              String             @id @default(uuid()) @db.Uuid
+  bookId          String             @db.Uuid
+  pageId          String?            @unique @db.Uuid
+  status          IllustrationStatus @default(PENDING)
+  prompt          String
+  objectKey       String?
+  provider        String?
+  providerAssetId String?
+  errorMessage    String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  book            Book               @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  page            BookPage?          @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([bookId, status])
+}
+
+model Job {
+  id           String    @id @default(uuid()) @db.Uuid
+  type         JobType
+  status       JobStatus @default(QUEUED)
+  userId       String?   @db.Uuid
+  bookId       String?   @db.Uuid
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  payload      Json
+  result       Json?
+  errorMessage String?
+  queuedAt     DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  updatedAt    DateTime  @updatedAt
+  book         Book?     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, type])
+  @@index([userId])
+  @@index([bookId])
+}
+
+model Plan {
+  id                 String         @id @default(uuid()) @db.Uuid
+  slug               String         @unique
+  name               String
+  monthlyBookLimit   Int
+  stripePriceId      String?
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  subscriptions      Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @db.Uuid
+  planId               String             @db.Uuid
+  provider             PaymentProvider    @default(STRIPE)
+  status               SubscriptionStatus
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  plan                 Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model PaymentCustomer {
+  id                 String          @id @default(uuid()) @db.Uuid
+  userId             String          @db.Uuid
+  provider           PaymentProvider @default(STRIPE)
+  providerCustomerId String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerCustomerId])
+  @@index([userId])
+}
+
+model PaymentEvent {
+  id          String          @id @default(uuid()) @db.Uuid
+  provider    PaymentProvider @default(STRIPE)
+  externalId  String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@unique([provider, externalId])
+  @@index([eventType])
+}
+
+model Rating {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  bookId    String   @db.Uuid
+  value     Int
+  comment   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+}
+
+model Referral {
+  id             String   @id @default(uuid()) @db.Uuid
+  referrerUserId String   @db.Uuid
+  referredUserId String?  @db.Uuid
+  code           String   @unique
+  createdAt      DateTime @default(now())
+  referredUser   User?    @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: SetNull)
+  referrerUser   User     @relation("Referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId])
+}
+
