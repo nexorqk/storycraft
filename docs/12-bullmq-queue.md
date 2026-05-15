@@ -37,7 +37,7 @@ Extends `WorkerHost` from `@nestjs/bullmq`. Processes `generate-book` jobs:
 ```ts
 type GenerationJobData = {
   bookId: string;
-  status?: string;         // 'starting' | 'generating' | 'completed' | 'failed'
+  status?: string; // 'starting' | 'generating' | 'completed' | 'failed'
   completedPages?: number;
   totalPages?: number;
   error?: string;

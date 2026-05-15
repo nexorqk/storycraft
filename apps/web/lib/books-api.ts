@@ -79,3 +79,24 @@ export async function deleteBook(bookId: string) {
     method: 'DELETE',
   });
 }
+
+export async function generateBook(bookId: string) {
+  return request<{ bookId: string; jobId: string; status: string }>(
+    `/books/${bookId}/generate`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export async function getBookProgress(bookId: string) {
+  return request<{
+    progress: {
+      progress: number;
+      status: string;
+      completedPages?: number;
+      totalPages?: number;
+      error?: string;
+    };
+  }>(`/books/${bookId}/progress`);
+}

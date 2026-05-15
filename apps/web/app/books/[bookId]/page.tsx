@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 import { AppShell } from '../../components/app-shell';
 import { AuthPanel } from '../../components/auth-panel';
 import type { BookDetail } from '../../../lib/books-api';
-import { getBook } from '../../../lib/books-api';
+import { getBook, generateBook, getBookProgress } from '../../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
@@ -22,6 +22,16 @@ export default function BookDetailPage() {
   const [book, setBook] = useState<BookDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{
+    progress: number;
+    status: string;
+    completedPages?: number;
+    totalPages?: number;
+    error?: string;
+  } | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBook = useCallback(() => {
     let cancelled = false;
@@ -46,6 +56,64 @@ export default function BookDetailPage() {
   }, [bookId]);
 
   useEffect(() => loadBook(), [loadBook]);
+
+  const startPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+    }
+
+    pollRef.current = setInterval(() => {
+      getBookProgress(bookId)
+        .then((data) => {
+          setProgress(data.progress);
+
+          if (
+            data.progress.status === 'completed' ||
+            data.progress.status === 'failed'
+          ) {
+            if (pollRef.current) {
+              clearInterval(pollRef.current);
+              pollRef.current = null;
+            }
+            loadBook();
+          }
+        })
+        .catch(() => {
+          // Silently ignore polling errors
+        });
+    }, 3000);
+  }, [bookId, loadBook]);
+
+  useEffect(() => {
+    if (book?.status === 'PROCESSING') {
+      startPolling();
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [book?.status, startPolling]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenerateError(null);
+
+    try {
+      await generateBook(bookId);
+      setProgress({ progress: 0, status: 'queued' });
+      startPolling();
+      loadBook();
+    } catch (err: unknown) {
+      setGenerateError(
+        err instanceof Error ? err.message : 'Failed to start generation',
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -82,6 +150,15 @@ export default function BookDetailPage() {
     );
   }
 
+  const isGenerating =
+    book.status === 'PROCESSING' ||
+    (progress &&
+      (progress.status === 'queued' ||
+        progress.status === 'starting' ||
+        progress.status === 'generating'));
+
+  const canGenerate = book.status === 'PENDING' || book.status === 'FAILED';
+
   return (
     <AppShell active="Books">
       <header className="page-header">
@@ -112,10 +189,48 @@ export default function BookDetailPage() {
 
       <AuthPanel />
 
+      {generateError && (
+        <div className="panel panel-error">
+          <h2>Generation Error</h2>
+          <p>{generateError}</p>
+        </div>
+      )}
+
       {book.errorMessage && (
         <div className="panel panel-error">
-          <h2>Error</h2>
+          <h2>Previous Error</h2>
           <p>{book.errorMessage}</p>
+        </div>
+      )}
+
+      {isGenerating && progress && (
+        <div className="panel">
+          <div className="section-heading">
+            <h2>Generating your book</h2>
+          </div>
+
+          <div className="progress-container">
+            <div className="progress-bar-bg">
+              <div
+                className="progress-bar-fill"
+                style={{ width: `${progress.progress}%` }}
+              />
+            </div>
+            <div className="progress-info">
+              <span className="progress-percent">{progress.progress}%</span>
+              <span className="progress-status">
+                {progress.status === 'generating' &&
+                progress.completedPages != null &&
+                progress.totalPages != null
+                  ? `Page ${progress.completedPages} of ${progress.totalPages}`
+                  : (statusLabels[progress.status] ?? progress.status)}
+              </span>
+            </div>
+          </div>
+
+          <p className="panel-status" style={{ marginTop: 12 }}>
+            This may take a few minutes. The page will update automatically.
+          </p>
         </div>
       )}
 
@@ -131,24 +246,30 @@ export default function BookDetailPage() {
         </div>
       )}
 
-      {book.status === 'PENDING' || book.status === 'PROCESSING' ? (
+      {canGenerate && (
         <div className="panel">
-          <h2>Generation in progress</h2>
+          <h2>
+            {book.status === 'FAILED'
+              ? 'Generation failed'
+              : 'Ready to generate'}
+          </h2>
           <p>
-            Your book is being generated. This may take a few minutes. Refresh
-            the page to check status.
+            {book.status === 'FAILED'
+              ? 'You can retry generation. Previous pages will be cleared.'
+              : "Start generating your personalized Russian children's book."}
           </p>
           <div className="card-actions" style={{ marginTop: 16 }}>
             <button
-              className="secondary-button"
+              className="primary-button"
               type="button"
-              onClick={() => window.location.reload()}
+              disabled={generating}
+              onClick={handleGenerate}
             >
-              Refresh
+              {generating ? 'Starting...' : 'Generate Book'}
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="book-detail-layout">
         <div className="panel">
@@ -157,7 +278,11 @@ export default function BookDetailPage() {
           </div>
 
           {book.pages.length === 0 ? (
-            <p className="empty-state">No pages generated yet.</p>
+            <p className="empty-state">
+              {isGenerating
+                ? 'Pages are being generated...'
+                : 'No pages generated yet.'}
+            </p>
           ) : (
             <ol className="catalog-pages-list">
               {book.pages.map((page) => (

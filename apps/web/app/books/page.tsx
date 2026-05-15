@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AppShell } from '../components/app-shell';
 import { AuthPanel } from '../components/auth-panel';
 import type { BookSummary } from '../../lib/books-api';
-import { listBooks, deleteBook } from '../../lib/books-api';
+import { listBooks, deleteBook, getBookProgress } from '../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
@@ -25,6 +25,13 @@ export default function BooksPage() {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [progressMap, setProgressMap] = useState<
+    Record<
+      string,
+      { progress: number; completedPages?: number; totalPages?: number }
+    >
+  >({});
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBooks = useCallback(() => {
     let cancelled = false;
@@ -50,12 +57,64 @@ export default function BooksPage() {
 
   useEffect(() => loadBooks(), [loadBooks]);
 
+  useEffect(() => {
+    const processingBooks = books.filter((b) => b.status === 'PROCESSING');
+
+    if (processingBooks.length === 0) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+    }
+
+    pollRef.current = setInterval(() => {
+      for (const book of processingBooks) {
+        getBookProgress(book.id)
+          .then((data) => {
+            setProgressMap((prev) => ({
+              ...prev,
+              [book.id]: {
+                progress: data.progress.progress,
+                completedPages: data.progress.completedPages,
+                totalPages: data.progress.totalPages,
+              },
+            }));
+
+            if (
+              data.progress.status === 'completed' ||
+              data.progress.status === 'failed'
+            ) {
+              loadBooks();
+            }
+          })
+          .catch(() => {});
+      }
+    }, 3000);
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [books, loadBooks]);
+
   const handleDelete = async (bookId: string) => {
     if (!confirm('Delete this book? This cannot be undone.')) return;
 
     try {
       await deleteBook(bookId);
       setBooks((prev) => prev.filter((b) => b.id !== bookId));
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        delete next[bookId];
+        return next;
+      });
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete book');
     }
@@ -96,51 +155,81 @@ export default function BooksPage() {
 
       {!loading && !error && books.length > 0 && (
         <div className="book-list">
-          {books.map((book) => (
-            <article className="book-card" key={book.id}>
-              <a href={`/books/${book.id}`} className="book-card-link">
-                <div className="book-card-header">
-                  <h3>{book.title || book.template.title}</h3>
-                  <span
-                    className="book-status"
-                    style={{ color: statusColors[book.status] }}
+          {books.map((book) => {
+            const prog = progressMap[book.id];
+            const isProcessing = book.status === 'PROCESSING' && prog;
+
+            return (
+              <article className="book-card" key={book.id}>
+                <a href={`/books/${book.id}`} className="book-card-link">
+                  <div className="book-card-header">
+                    <h3>{book.title || book.template.title}</h3>
+                    <span
+                      className="book-status"
+                      style={{ color: statusColors[book.status] }}
+                    >
+                      {statusLabels[book.status]}
+                    </span>
+                  </div>
+
+                  <div className="book-card-meta">
+                    <span>Child: {book.child.name}</span>
+                    <span>Template: {book.template.title}</span>
+                    <span>
+                      Created: {new Date(book.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {isProcessing && (
+                    <div
+                      className="progress-container"
+                      style={{ marginTop: 8 }}
+                    >
+                      <div className="progress-bar-bg">
+                        <div
+                          className="progress-bar-fill"
+                          style={{ width: `${prog.progress}%` }}
+                        />
+                      </div>
+                      <div className="progress-info">
+                        <span className="progress-percent">
+                          {prog.progress}%
+                        </span>
+                        <span className="progress-status">
+                          {prog.completedPages != null &&
+                          prog.totalPages != null
+                            ? `Page ${prog.completedPages} of ${prog.totalPages}`
+                            : 'Generating...'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </a>
+
+                {book.errorMessage && (
+                  <p className="book-error">{book.errorMessage}</p>
+                )}
+
+                {book.status === 'COMPLETED' && book.pdfObjectKey && (
+                  <div className="card-actions">
+                    <button className="primary-button" type="button">
+                      Download PDF
+                    </button>
+                  </div>
+                )}
+
+                <div className="card-actions" style={{ marginTop: 8 }}>
+                  <button
+                    className="danger-button"
+                    type="button"
+                    onClick={() => handleDelete(book.id)}
                   >
-                    {statusLabels[book.status]}
-                  </span>
-                </div>
-
-                <div className="book-card-meta">
-                  <span>Child: {book.child.name}</span>
-                  <span>Template: {book.template.title}</span>
-                  <span>
-                    Created: {new Date(book.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </a>
-
-              {book.errorMessage && (
-                <p className="book-error">{book.errorMessage}</p>
-              )}
-
-              {book.status === 'COMPLETED' && book.pdfObjectKey && (
-                <div className="card-actions">
-                  <button className="primary-button" type="button">
-                    Download PDF
+                    Delete
                   </button>
                 </div>
-              )}
-
-              <div className="card-actions" style={{ marginTop: 8 }}>
-                <button
-                  className="danger-button"
-                  type="button"
-                  onClick={() => handleDelete(book.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </AppShell>
