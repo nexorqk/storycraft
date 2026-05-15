@@ -13,16 +13,16 @@ export type AuthMeResponse = {
   user: PublicUser | null;
 };
 
-const apiUrl =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
   'http://localhost:3001/api';
 
 export function getGoogleAuthUrl() {
-  return `${apiUrl}/auth/google`;
+  return `${API_URL}/auth/google`;
 }
 
 export async function fetchCurrentUser(signal?: AbortSignal) {
-  const response = await fetch(`${apiUrl}/auth/me`, {
+  const response = await fetch(`${API_URL}/auth/me`, {
     credentials: 'include',
     cache: 'no-store',
     signal,
@@ -36,7 +36,7 @@ export async function fetchCurrentUser(signal?: AbortSignal) {
 }
 
 export async function logoutCurrentUser() {
-  const response = await fetch(`${apiUrl}/auth/logout`, {
+  const response = await fetch(`${API_URL}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   });
