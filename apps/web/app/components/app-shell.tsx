@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 const navItems = [
   { label: 'Dashboard', href: '/' },
   { label: 'Children', href: '/children' },
-  { label: 'Templates', href: '#' },
+  { label: 'Templates', href: '/templates' },
   { label: 'Books', href: '#' },
   { label: 'Settings', href: '#' },
 ];
