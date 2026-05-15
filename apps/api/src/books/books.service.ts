@@ -50,6 +50,11 @@ type GenerationJobData = {
   error?: string;
 };
 
+type FreeUsageUpdateResult = {
+  freeGenerationsUsed: number;
+  freeGenerationsPeriodStart: Date;
+};
+
 @Injectable()
 export class BooksService {
   constructor(
@@ -131,17 +136,26 @@ export class BooksService {
       throw new NotFoundException('Template not found or inactive');
     }
 
+    const usagePeriod = this.getCurrentFreeGenerationPeriod();
     const { book, persistentJob } = await this.prisma.$transaction(
       async (tx) => {
-        const usageUpdate = await tx.user.updateMany({
-          where: {
-            id: userId,
-            freeGenerationsUsed: { lt: FREE_PLAN_MONTHLY_BOOK_LIMIT },
-          },
-          data: { freeGenerationsUsed: { increment: 1 } },
-        });
+        const usageRows = await tx.$queryRaw<FreeUsageUpdateResult[]>`
+          UPDATE "User"
+          SET
+            "freeGenerationsPeriodStart" = ${usagePeriod.start},
+            "freeGenerationsUsed" = CASE
+              WHEN "freeGenerationsPeriodStart" < ${usagePeriod.start} THEN 1
+              ELSE "freeGenerationsUsed" + 1
+            END
+          WHERE "id" = ${userId}
+            AND (
+              "freeGenerationsPeriodStart" < ${usagePeriod.start}
+              OR "freeGenerationsUsed" < ${FREE_PLAN_MONTHLY_BOOK_LIMIT}
+            )
+          RETURNING "freeGenerationsUsed", "freeGenerationsPeriodStart"
+        `;
 
-        if (usageUpdate.count === 0) {
+        if (usageRows.length === 0) {
           throw new BadRequestException(
             `Free plan limit reached (${FREE_PLAN_MONTHLY_BOOK_LIMIT} books). Upgrade your plan to generate more books.`,
           );
@@ -185,9 +199,15 @@ export class BooksService {
       const message = this.formatError(error);
 
       await this.markQueueingFailed(persistentJob.id, book.id, message);
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { freeGenerationsUsed: { decrement: 1 } },
+      await this.prisma.user.updateMany({
+        where: {
+          id: userId,
+          freeGenerationsPeriodStart: usagePeriod.start,
+          freeGenerationsUsed: { gt: 0 },
+        },
+        data: {
+          freeGenerationsUsed: { decrement: 1 },
+        },
       });
 
       throw error;
@@ -255,20 +275,45 @@ export class BooksService {
   async getUsage(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { freeGenerationsUsed: true },
+      select: {
+        freeGenerationsUsed: true,
+        freeGenerationsPeriodStart: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
+    const period = this.getCurrentFreeGenerationPeriod();
+    const normalizedUser =
+      user.freeGenerationsPeriodStart < period.start
+        ? await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+              freeGenerationsUsed: 0,
+              freeGenerationsPeriodStart: period.start,
+            },
+            select: {
+              freeGenerationsUsed: true,
+              freeGenerationsPeriodStart: true,
+            },
+          })
+        : user;
+    const periodStart = this.normalizePeriodStart(
+      normalizedUser.freeGenerationsPeriodStart,
+      period,
+    );
+
     return {
-      used: user.freeGenerationsUsed,
+      used: normalizedUser.freeGenerationsUsed,
       limit: FREE_PLAN_MONTHLY_BOOK_LIMIT,
       remaining: Math.max(
         0,
-        FREE_PLAN_MONTHLY_BOOK_LIMIT - user.freeGenerationsUsed,
+        FREE_PLAN_MONTHLY_BOOK_LIMIT - normalizedUser.freeGenerationsUsed,
       ),
+      periodStart: periodStart.toISOString(),
+      periodEnd: this.addUtcMonth(periodStart).toISOString(),
     };
   }
 
@@ -385,6 +430,34 @@ export class BooksService {
     }
 
     return book;
+  }
+
+  private getCurrentFreeGenerationPeriod(now = new Date()) {
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+
+    return {
+      start,
+      end: this.addUtcMonth(start),
+    };
+  }
+
+  private normalizePeriodStart(
+    periodStart: Date,
+    currentPeriod: { start: Date; end: Date },
+  ) {
+    if (periodStart >= currentPeriod.start && periodStart < currentPeriod.end) {
+      return currentPeriod.start;
+    }
+
+    return periodStart;
+  }
+
+  private addUtcMonth(value: Date) {
+    return new Date(
+      Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 1),
+    );
   }
 
   private async findLatestGenerationJob(bookId: string) {

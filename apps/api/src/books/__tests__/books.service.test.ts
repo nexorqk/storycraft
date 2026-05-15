@@ -8,6 +8,7 @@ import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
 
 const mockPrismaService = {
   $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),
@@ -50,6 +51,12 @@ describe('BooksService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.$queryRaw.mockResolvedValue([
+      {
+        freeGenerationsUsed: 1,
+        freeGenerationsPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
+      },
+    ]);
     mockPrismaService.$transaction.mockImplementation(async (arg: unknown) => {
       if (typeof arg === 'function') {
         return (arg as (tx: typeof mockPrismaService) => unknown)(
@@ -69,6 +76,10 @@ describe('BooksService', () => {
     }).compile();
 
     service = module.get<BooksService>(BooksService);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('listBooks', () => {
@@ -149,7 +160,6 @@ describe('BooksService', () => {
         child: { id: 'child-1', name: 'Masha' },
         template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
       });
-      mockPrismaService.user.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.job.create.mockResolvedValue({
         id: 'persistent-job-1',
       });
@@ -158,13 +168,7 @@ describe('BooksService', () => {
       const result = await service.createBook('user-1', dto);
 
       expect(result.id).toBe('book-1');
-      expect(mockPrismaService.user.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: 'user-1',
-          freeGenerationsUsed: { lt: 3 },
-        },
-        data: { freeGenerationsUsed: { increment: 1 } },
-      });
+      expect(mockPrismaService.$queryRaw).toHaveBeenCalledTimes(1);
       expect(mockPrismaService.job.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           type: 'GENERATE_BOOK',
@@ -196,7 +200,7 @@ describe('BooksService', () => {
         id: 'template-1',
         isActive: true,
       });
-      mockPrismaService.user.updateMany.mockResolvedValue({ count: 0 });
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
 
       await expect(service.createBook('user-1', dto)).rejects.toThrow(
         BadRequestException,
@@ -265,7 +269,6 @@ describe('BooksService', () => {
         child: { id: 'child-1', name: 'Masha' },
         template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
       });
-      mockPrismaService.user.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.job.create.mockResolvedValue({
         id: 'persistent-job-1',
       });
@@ -284,6 +287,51 @@ describe('BooksService', () => {
           }),
         }),
       );
+    });
+
+    it('uses an atomic monthly usage update for concurrent generation requests', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-15T12:00:00.000Z'));
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+      mockPrismaService.book.create.mockResolvedValue({
+        id: 'book-1',
+        title: 'My Book',
+        language: 'ru',
+        status: 'PENDING',
+        pdfObjectKey: null,
+        errorMessage: null,
+        completedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        child: { id: 'child-1', name: 'Masha' },
+        template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
+      });
+      mockPrismaService.job.create.mockResolvedValue({
+        id: 'persistent-job-1',
+      });
+      mockQueue.add.mockResolvedValue({ id: 'job-1' });
+
+      await service.createBook('user-1', dto);
+
+      const firstCall = mockPrismaService.$queryRaw.mock.calls[0]!;
+      const sql = (firstCall[0] as TemplateStringsArray).join('?');
+
+      expect(sql).toContain('UPDATE "User"');
+      expect(sql).toContain('"freeGenerationsPeriodStart" <');
+      expect(sql).toContain('"freeGenerationsUsed" <');
+      expect(firstCall).toContainEqual(new Date('2026-05-01T00:00:00.000Z'));
+      expect(firstCall).toContain(3);
+
+      jest.useRealTimers();
     });
   });
 
@@ -331,9 +379,18 @@ describe('BooksService', () => {
   });
 
   describe('getUsage', () => {
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-15T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('returns usage stats for a user', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         freeGenerationsUsed: 2,
+        freeGenerationsPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
       });
 
       const result = await service.getUsage('user-1');
@@ -342,17 +399,52 @@ describe('BooksService', () => {
         used: 2,
         limit: 3,
         remaining: 1,
+        periodStart: '2026-05-01T00:00:00.000Z',
+        periodEnd: '2026-06-01T00:00:00.000Z',
       });
     });
 
     it('returns zero remaining when limit is reached', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         freeGenerationsUsed: 5,
+        freeGenerationsPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
       });
 
       const result = await service.getUsage('user-1');
 
       expect(result.remaining).toBe(0);
+    });
+
+    it('resets usage when the stored period is from a previous month', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        freeGenerationsUsed: 3,
+        freeGenerationsPeriodStart: new Date('2026-04-01T00:00:00.000Z'),
+      });
+      mockPrismaService.user.update.mockResolvedValue({
+        freeGenerationsUsed: 0,
+        freeGenerationsPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
+      });
+
+      const result = await service.getUsage('user-1');
+
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          freeGenerationsUsed: 0,
+          freeGenerationsPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
+        },
+        select: {
+          freeGenerationsUsed: true,
+          freeGenerationsPeriodStart: true,
+        },
+      });
+      expect(result).toEqual({
+        used: 0,
+        limit: 3,
+        remaining: 3,
+        periodStart: '2026-05-01T00:00:00.000Z',
+        periodEnd: '2026-06-01T00:00:00.000Z',
+      });
     });
 
     it('throws NotFoundException when user not found', async () => {

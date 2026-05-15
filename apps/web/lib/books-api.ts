@@ -111,6 +111,8 @@ export async function getBooksUsage() {
       used: number;
       limit: number;
       remaining: number;
+      periodStart: string;
+      periodEnd: string;
     };
   }>('/books/usage');
 }
