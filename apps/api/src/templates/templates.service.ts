@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import type { Template } from '@prisma/client';
+import type { Template, TemplatePage } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+
+export type PublicTemplatePage = {
+  pageNumber: number;
+  textPrompt: string;
+  illustrationPrompt: string;
+};
 
 export type PublicTemplate = {
   id: string;
@@ -13,6 +19,7 @@ export type PublicTemplate = {
   ageMax: number | null;
   pageCount: number;
   isActive: boolean;
+  pages: PublicTemplatePage[];
 };
 
 @Injectable()
@@ -22,6 +29,7 @@ export class TemplatesService {
   async listTemplates() {
     const templates = await this.prisma.template.findMany({
       where: { isActive: true },
+      include: { pages: { orderBy: { pageNumber: 'asc' } } },
       orderBy: [{ title: 'asc' }],
     });
 
@@ -31,6 +39,7 @@ export class TemplatesService {
   async getTemplateBySlug(slug: string) {
     const template = await this.prisma.template.findUnique({
       where: { slug, isActive: true },
+      include: { pages: { orderBy: { pageNumber: 'asc' } } },
     });
 
     if (!template) {
@@ -40,7 +49,9 @@ export class TemplatesService {
     return this.toPublicTemplate(template);
   }
 
-  private toPublicTemplate(template: Template): PublicTemplate {
+  private toPublicTemplate(
+    template: Template & { pages: TemplatePage[] },
+  ): PublicTemplate {
     return {
       id: template.id,
       slug: template.slug,
@@ -51,6 +62,11 @@ export class TemplatesService {
       ageMax: template.ageMax,
       pageCount: template.pageCount,
       isActive: template.isActive,
+      pages: template.pages.map((page) => ({
+        pageNumber: page.pageNumber,
+        textPrompt: page.textPrompt,
+        illustrationPrompt: page.illustrationPrompt,
+      })),
     };
   }
 }

@@ -84,22 +84,38 @@ model Child {
 }
 
 model Template {
-  id                      String   @id @default(uuid()) @db.Uuid
-  slug                    String   @unique
+  id                      String         @id @default(uuid()) @db.Uuid
+  slug                    String         @unique
   title                   String
   description             String?
-  language                String   @default("ru")
+  language                String         @default("ru")
   ageMin                  Int?
   ageMax                  Int?
-  pageCount               Int      @default(8)
+  pageCount               Int            @default(8)
   storyPrompt             String
   illustrationStylePrompt String
-  isActive                Boolean  @default(true)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  isActive                Boolean        @default(true)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
   books                   Book[]
+  pages                   TemplatePage[]
 
   @@index([language, isActive])
+}
+
+model TemplatePage {
+  id                   String   @id @default(uuid()) @db.Uuid
+  templateId           String   @db.Uuid
+  pageNumber           Int
+  textPrompt           String
+  illustrationPrompt   String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  template             Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  bookPages            BookPage[]
+
+  @@unique([templateId, pageNumber])
+  @@index([templateId])
 }
 
 model Book {
@@ -131,6 +147,7 @@ model Book {
 model BookPage {
   id                 String        @id @default(uuid()) @db.Uuid
   bookId             String        @db.Uuid
+  templatePageId     String?       @db.Uuid
   pageNumber         Int
   text               String
   illustrationPrompt String?
@@ -138,9 +155,11 @@ model BookPage {
   updatedAt          DateTime      @updatedAt
   book               Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
   illustration       Illustration?
+  templatePage       TemplatePage? @relation(fields: [templatePageId], references: [id], onDelete: SetNull)
 
   @@unique([bookId, pageNumber])
   @@index([bookId])
+  @@index([templatePageId])
 }
 
 model Illustration {

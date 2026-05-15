@@ -65,13 +65,27 @@ export function TemplateSelector() {
             </div>
             <div>
               <dt>Pages</dt>
-              <dd>{template.pageCount}</dd>
+              <dd>{template.pages.length}</dd>
             </div>
             <div>
               <dt>Language</dt>
               <dd>{template.language.toUpperCase()}</dd>
             </div>
           </dl>
+          {template.pages.length > 0 && (
+            <ol className="template-pages">
+              {template.pages.map((page) => (
+                <li key={page.pageNumber} className="template-page-item">
+                  <span className="template-page-number">
+                    {page.pageNumber}
+                  </span>
+                  <span className="template-page-prompt">
+                    {page.textPrompt}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
           <button
             className="template-action"
             type="button"

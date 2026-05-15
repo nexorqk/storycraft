@@ -1,5 +1,11 @@
 import { API_URL } from './auth-api';
 
+export type TemplatePageInfo = {
+  pageNumber: number;
+  textPrompt: string;
+  illustrationPrompt: string;
+};
+
 export type TemplateInfo = {
   id: string;
   slug: string;
@@ -10,6 +16,7 @@ export type TemplateInfo = {
   ageMax: number | null;
   pageCount: number;
   isActive: boolean;
+  pages: TemplatePageInfo[];
 };
 
 export async function listTemplates() {
