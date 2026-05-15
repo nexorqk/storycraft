@@ -35,6 +35,8 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  OPENAI_API_KEY: z.string().default('replace-me'),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
 });
 
 export type Env = z.infer<typeof envSchema>;
