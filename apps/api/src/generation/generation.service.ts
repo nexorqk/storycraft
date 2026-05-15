@@ -6,6 +6,8 @@ import type { StoryPageRequest, StoryPageResult } from './types';
 import { OpenAiProvider } from './openai.provider';
 import { DallEProvider } from './dalle.provider';
 
+type ProgressCallback = (completed: number, total: number) => Promise<void>;
+
 @Injectable()
 export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
@@ -17,7 +19,10 @@ export class GenerationService {
     private readonly storage: StorageService,
   ) {}
 
-  async generateBook(bookId: string): Promise<void> {
+  async generateBook(
+    bookId: string,
+    onProgress?: ProgressCallback,
+  ): Promise<void> {
     const book = await this.prisma.book.findUnique({
       where: { id: bookId },
       include: {
@@ -30,10 +35,7 @@ export class GenerationService {
       throw new Error(`Book ${bookId} not found`);
     }
 
-    await this.prisma.book.update({
-      where: { id: bookId },
-      data: { status: 'PROCESSING' },
-    });
+    const totalPages = book.template.pages.length;
 
     try {
       const childName = book.child.name;
@@ -114,6 +116,10 @@ export class GenerationService {
         this.logger.log(
           `Illustration uploaded for page ${templatePage.pageNumber} of book ${bookId}`,
         );
+
+        if (onProgress) {
+          await onProgress(templatePage.pageNumber, totalPages);
+        }
       }
 
       await this.prisma.book.update({

@@ -50,11 +50,11 @@ Updated `generateBook()` flow:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `DALLE_MODEL` | `dall-e-3` | DALL-E model to use |
-| `DALLE_SIZE` | `1024x1024` | Image size (`1024x1024`, `1024x1792`, `1792x1024`) |
-| `DALLE_QUALITY` | `standard` | Image quality (`standard`, `hd`) |
+| Variable        | Default     | Description                                        |
+| --------------- | ----------- | -------------------------------------------------- |
+| `DALLE_MODEL`   | `dall-e-3`  | DALL-E model to use                                |
+| `DALLE_SIZE`    | `1024x1024` | Image size (`1024x1024`, `1024x1792`, `1792x1024`) |
+| `DALLE_QUALITY` | `standard`  | Image quality (`standard`, `hd`)                   |
 
 ### Storage Integration
 

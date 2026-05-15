@@ -10,6 +10,7 @@ import { GenerationModule } from './generation/generation.module';
 import { HealthModule } from './health/health.module';
 import { JobsModule } from './jobs/jobs.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { GenerationQueueModule } from './queues/generation-queue.module';
 import { QueuesModule } from './queues/queues.module';
 import { StorageModule } from './storage/storage.module';
 import { TemplatesModule } from './templates/templates.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     StorageModule,
     GenerationModule,
     AdminModule,
+    GenerationQueueModule,
   ],
 })
 export class AppModule {}

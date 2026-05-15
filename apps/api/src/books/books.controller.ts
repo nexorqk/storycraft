@@ -34,6 +34,14 @@ export class BooksController {
     return { book: await this.books.getBook(user.id, bookId) };
   }
 
+  @Get(':bookId/progress')
+  async getBookProgress(
+    @CurrentUser() user: PublicUser,
+    @Param('bookId', new ParseUUIDPipe()) bookId: string,
+  ) {
+    return { progress: await this.books.getBookProgress(user.id, bookId) };
+  }
+
   @Post()
   async createBook(
     @CurrentUser() user: PublicUser,

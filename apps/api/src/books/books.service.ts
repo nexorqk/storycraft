@@ -1,8 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import type { Book, BookStatus } from '@prisma/client';
 
+import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateBookDto } from './dto/create-book.dto';
+
+export type BookProgress = {
+  progress: number;
+  status: string;
+  completedPages?: number;
+  totalPages?: number;
+  error?: string;
+};
 
 export type PublicBook = {
   id: string;
@@ -27,7 +38,11 @@ export type PublicBook = {
 
 @Injectable()
 export class BooksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(GENERATION_QUEUE)
+    private readonly generationQueue: Queue,
+  ) {}
 
   async listBooks(userId: string) {
     const books = await this.prisma.book.findMany({
@@ -107,6 +122,19 @@ export class BooksService {
       },
     });
 
+    await this.generationQueue.add(
+      'generate-book',
+      { bookId: book.id },
+      {
+        jobId: `book-${book.id}`,
+        attempts: 2,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    );
+
     return this.toPublicBook(book);
   }
 
@@ -116,6 +144,39 @@ export class BooksService {
     await this.prisma.book.delete({
       where: { id: bookId },
     });
+  }
+
+  async getBookProgress(userId: string, bookId: string): Promise<BookProgress> {
+    await this.findOwnedBook(userId, bookId);
+
+    const job = await this.generationQueue.getJob(`book-${bookId}`);
+
+    if (!job) {
+      return { progress: 0, status: 'pending' };
+    }
+
+    const state = await job.getState();
+    const progress = job.progress as number;
+    const data = job.data as Record<string, unknown>;
+
+    if (state === 'completed') {
+      return { progress: 100, status: 'completed' };
+    }
+
+    if (state === 'failed') {
+      return {
+        progress: progress ?? 0,
+        status: 'failed',
+        error: (data.error as string) ?? 'Unknown error',
+      };
+    }
+
+    return {
+      progress: progress ?? 0,
+      status: (data.status as string) ?? state,
+      completedPages: data.completedPages as number | undefined,
+      totalPages: data.totalPages as number | undefined,
+    };
   }
 
   private async findOwnedBook(userId: string, bookId: string) {
