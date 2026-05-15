@@ -25,14 +25,14 @@ Methods:
 
 The S3 client is configured from environment variables:
 
-| Variable | Default | Description |
-|---|---|---|
-| `S3_ENDPOINT` | `http://localhost:3900` | S3 API endpoint (Garage locally) |
-| `S3_REGION` | `garage` | S3 region |
-| `S3_BUCKET` | `storycraft-local` | Bucket name |
-| `S3_ACCESS_KEY_ID` | `replace-me` | Access key |
-| `S3_SECRET_ACCESS_KEY` | `replace-me` | Secret key |
-| `S3_FORCE_PATH_STYLE` | `true` | Use path-style URLs (required for Garage/MinIO) |
+| Variable               | Default                 | Description                                     |
+| ---------------------- | ----------------------- | ----------------------------------------------- |
+| `S3_ENDPOINT`          | `http://localhost:3900` | S3 API endpoint (Garage locally)                |
+| `S3_REGION`            | `garage`                | S3 region                                       |
+| `S3_BUCKET`            | `storycraft-local`      | Bucket name                                     |
+| `S3_ACCESS_KEY_ID`     | `replace-me`            | Access key                                      |
+| `S3_SECRET_ACCESS_KEY` | `replace-me`            | Secret key                                      |
+| `S3_FORCE_PATH_STYLE`  | `true`                  | Use path-style URLs (required for Garage/MinIO) |
 
 ### Dependencies
 

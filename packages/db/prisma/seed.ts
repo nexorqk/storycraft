@@ -82,6 +82,18 @@ async function upsertTemplateWithPages(
 }
 
 async function main() {
+  await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: { name: 'ADMIN' },
+  });
+
+  await prisma.role.upsert({
+    where: { name: 'USER' },
+    update: {},
+    create: { name: 'USER' },
+  });
+
   await prisma.plan.upsert({
     where: { slug: 'free' },
     update: {

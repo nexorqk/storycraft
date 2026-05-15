@@ -46,6 +46,31 @@ enum SubscriptionStatus {
   TRIALING
 }
 
+enum RoleName {
+  ADMIN
+  USER
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      RoleName @unique
+  createdAt DateTime @default(now())
+  users     UserRole[]
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
 model User {
   id                  String            @id @default(uuid()) @db.Uuid
   email               String            @unique
@@ -64,6 +89,7 @@ model User {
   referrals           Referral[]        @relation("Referrer")
   referredBy          Referral[]        @relation("ReferredUser")
   subscriptions       Subscription[]
+  roles               UserRole[]
 
   @@index([email])
 }

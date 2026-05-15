@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BooksModule } from './books/books.module';
 import { ChildrenModule } from './children/children.module';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     QueuesModule,
     StorageModule,
     GenerationModule,
+    AdminModule,
   ],
 })
 export class AppModule {}
