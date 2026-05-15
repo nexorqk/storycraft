@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { AppShell } from '../components/app-shell';
 import { AuthPanel } from '../components/auth-panel';
@@ -15,11 +16,14 @@ type FormState = {
   templateId: string;
   title: string;
   language: string;
+  childNameInStory: string;
+  coverStyle: string;
 };
 
 type Step = 'select' | 'customize' | 'done' | 'error';
 
-export default function CreateBookPage() {
+function CreateBookContent() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>('select');
   const [submitting, setSubmitting] = useState(false);
   const [children, setChildren] = useState<ChildProfile[]>([]);
@@ -29,9 +33,18 @@ export default function CreateBookPage() {
     templateId: '',
     title: '',
     language: 'ru',
+    childNameInStory: '',
+    coverStyle: 'default',
   });
   const [error, setError] = useState<string | null>(null);
   const [createdBookId, setCreatedBookId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const preselectedTemplate = searchParams.get('templateId');
+    if (preselectedTemplate) {
+      setForm((f) => ({ ...f, templateId: preselectedTemplate }));
+    }
+  }, [searchParams]);
 
   const loadData = useCallback(() => {
     let cancelled = false;
@@ -57,6 +70,7 @@ export default function CreateBookPage() {
   useEffect(() => loadData(), [loadData]);
 
   const selectedTemplate = templates.find((t) => t.id === form.templateId);
+  const selectedChild = children.find((c) => c.id === form.childId);
 
   const handleSubmit = async () => {
     if (!form.childId || !form.templateId) return;
@@ -99,7 +113,7 @@ export default function CreateBookPage() {
         <AuthPanel />
 
         <div className="panel">
-          <p>Book ID: {createdBookId}</p>
+          <p className="panel-status">Book ID: {createdBookId}</p>
           <div className="card-actions" style={{ marginTop: 16 }}>
             <a href="/books" className="primary-button">
               Go to Library
@@ -114,6 +128,8 @@ export default function CreateBookPage() {
                   templateId: '',
                   title: '',
                   language: 'ru',
+                  childNameInStory: '',
+                  coverStyle: 'default',
                 });
                 setCreatedBookId(null);
               }}
@@ -250,6 +266,37 @@ export default function CreateBookPage() {
               </div>
 
               <div className="field">
+                <span>Child&apos;s name in the story</span>
+                <input
+                  type="text"
+                  placeholder="Default: child profile name"
+                  value={form.childNameInStory}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      childNameInStory: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <span>Illustration style</span>
+                <select
+                  value={form.coverStyle}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, coverStyle: e.target.value }))
+                  }
+                  className="field-select"
+                >
+                  <option value="default">Default (template style)</option>
+                  <option value="watercolor">Watercolor</option>
+                  <option value="cartoon">Cartoon</option>
+                  <option value="realistic">Realistic</option>
+                </select>
+              </div>
+
+              <div className="field">
                 <span>Language</span>
                 <select
                   value={form.language}
@@ -288,51 +335,106 @@ export default function CreateBookPage() {
       )}
 
       {step === 'customize' && (
-        <div className="panel">
-          <div className="section-heading">
-            <h2>Review your book</h2>
+        <div className="customize-layout">
+          <div className="panel">
+            <div className="section-heading">
+              <h2>Review your book</h2>
+            </div>
+
+            <dl className="review-meta">
+              <div>
+                <dt>Child</dt>
+                <dd>{selectedChild?.name ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>Template</dt>
+                <dd>{selectedTemplate?.title ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>Title</dt>
+                <dd>{form.title || '(auto-generated)'}</dd>
+              </div>
+              <div>
+                <dt>Name in story</dt>
+                <dd>{form.childNameInStory || selectedChild?.name || '—'}</dd>
+              </div>
+              <div>
+                <dt>Style</dt>
+                <dd>
+                  {form.coverStyle === 'default'
+                    ? 'Default'
+                    : form.coverStyle.charAt(0).toUpperCase() +
+                      form.coverStyle.slice(1)}
+                </dd>
+              </div>
+              <div>
+                <dt>Language</dt>
+                <dd>{form.language.toUpperCase()}</dd>
+              </div>
+            </dl>
+
+            <div className="card-actions" style={{ marginTop: 20 }}>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setStep('select')}
+              >
+                Back
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                disabled={submitting}
+                onClick={handleSubmit}
+              >
+                {submitting ? 'Creating...' : 'Create Book'}
+              </button>
+            </div>
           </div>
 
-          <dl className="review-meta">
-            <div>
-              <dt>Child</dt>
-              <dd>
-                {children.find((c) => c.id === form.childId)?.name ?? '—'}
-              </dd>
+          {selectedTemplate && selectedTemplate.pages.length > 0 && (
+            <div className="panel">
+              <div className="section-heading">
+                <h2>Story preview</h2>
+              </div>
+              <ol className="catalog-pages-list">
+                {selectedTemplate.pages.map((page) => (
+                  <li key={page.pageNumber} className="catalog-page-item">
+                    <span className="catalog-page-num">{page.pageNumber}</span>
+                    <div>
+                      <p className="catalog-page-text">{page.textPrompt}</p>
+                      <p className="catalog-page-illust">
+                        🎨 {page.illustrationPrompt}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
-            <div>
-              <dt>Template</dt>
-              <dd>{selectedTemplate?.title ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>Title</dt>
-              <dd>{form.title || '(auto-generated)'}</dd>
-            </div>
-            <div>
-              <dt>Language</dt>
-              <dd>{form.language.toUpperCase()}</dd>
-            </div>
-          </dl>
-
-          <div className="card-actions" style={{ marginTop: 20 }}>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => setStep('select')}
-            >
-              Back
-            </button>
-            <button
-              className="primary-button"
-              type="button"
-              disabled={submitting}
-              onClick={handleSubmit}
-            >
-              {submitting ? 'Creating...' : 'Create Book'}
-            </button>
-          </div>
+          )}
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function CreateBookPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell active="Create">
+          <header className="page-header">
+            <div>
+              <p className="eyebrow">Loading</p>
+              <h1>Create a Book</h1>
+            </div>
+          </header>
+          <AuthPanel />
+          <p className="empty-state">Loading...</p>
+        </AppShell>
+      }
+    >
+      <CreateBookContent />
+    </Suspense>
   );
 }

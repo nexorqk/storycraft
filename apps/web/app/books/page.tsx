@@ -98,23 +98,25 @@ export default function BooksPage() {
         <div className="book-list">
           {books.map((book) => (
             <article className="book-card" key={book.id}>
-              <div className="book-card-header">
-                <h3>{book.title || book.template.title}</h3>
-                <span
-                  className="book-status"
-                  style={{ color: statusColors[book.status] }}
-                >
-                  {statusLabels[book.status]}
-                </span>
-              </div>
+              <a href={`/books/${book.id}`} className="book-card-link">
+                <div className="book-card-header">
+                  <h3>{book.title || book.template.title}</h3>
+                  <span
+                    className="book-status"
+                    style={{ color: statusColors[book.status] }}
+                  >
+                    {statusLabels[book.status]}
+                  </span>
+                </div>
 
-              <div className="book-card-meta">
-                <span>Child: {book.child.name}</span>
-                <span>Template: {book.template.title}</span>
-                <span>
-                  Created: {new Date(book.createdAt).toLocaleDateString()}
-                </span>
-              </div>
+                <div className="book-card-meta">
+                  <span>Child: {book.child.name}</span>
+                  <span>Template: {book.template.title}</span>
+                  <span>
+                    Created: {new Date(book.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </a>
 
               {book.errorMessage && (
                 <p className="book-error">{book.errorMessage}</p>
