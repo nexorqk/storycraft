@@ -5,7 +5,8 @@ const navItems = [
   { label: 'Dashboard', href: '/' },
   { label: 'Children', href: '/children' },
   { label: 'Templates', href: '/templates' },
-  { label: 'Books', href: '#' },
+  { label: 'Create', href: '/create' },
+  { label: 'Books', href: '/books' },
   { label: 'Settings', href: '#' },
 ];
 
