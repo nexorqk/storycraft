@@ -18,10 +18,12 @@ function getDisplayName(user: PublicUser) {
 export function AuthPanel() {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<PublicUser | null>(null);
+  const [hasAvatarError, setHasAvatarError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function refreshSession(signal?: AbortSignal) {
     setStatus('loading');
+    setHasAvatarError(false);
 
     try {
       const result = await fetchCurrentUser(signal);
@@ -52,6 +54,7 @@ export function AuthPanel() {
     try {
       await logoutCurrentUser();
       setUser(null);
+      setHasAvatarError(false);
       setStatus('ready');
     } finally {
       setIsLoggingOut(false);
@@ -103,21 +106,26 @@ export function AuthPanel() {
     );
   }
 
+  const avatarUrl = user.avatarUrl && !hasAvatarError ? user.avatarUrl : null;
+  const fallbackInitial = getDisplayName(user).slice(0, 1).toUpperCase();
+
   return (
     <section className="auth-panel">
       <div className="user-summary">
-        {user.avatarUrl ? (
+        {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             alt=""
             className="user-avatar"
             height={44}
-            src={user.avatarUrl}
+            onError={() => setHasAvatarError(true)}
+            referrerPolicy="no-referrer"
+            src={avatarUrl}
             width={44}
           />
         ) : (
           <div className="user-avatar-fallback" aria-hidden="true">
-            {getDisplayName(user).slice(0, 1).toUpperCase()}
+            {fallbackInitial}
           </div>
         )}
         <div>
