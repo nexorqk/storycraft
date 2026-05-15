@@ -4,6 +4,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 
 import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
 
 const userA = 'user-a';
@@ -46,6 +47,13 @@ function makePrismaMock() {
 const mockQueue = {
   add: jest.fn(),
   getJob: jest.fn(),
+};
+
+const mockJobsService = {
+  markQueueingFailed: jest.fn(),
+  findLatestGenerationJob: jest.fn(),
+  findGenerationJobForUser: jest.fn(),
+  listJobsForBook: jest.fn(),
 };
 
 function setupCreateBookMocks(prisma: ReturnType<typeof makePrismaMock>) {
@@ -93,11 +101,15 @@ describe('Books ownership boundaries', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     prisma = makePrismaMock();
+    mockJobsService.markQueueingFailed.mockResolvedValue(undefined);
+    mockJobsService.findLatestGenerationJob.mockResolvedValue(null);
+    mockJobsService.findGenerationJobForUser.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BooksService,
         { provide: PrismaService, useValue: prisma },
+        { provide: JobsService, useValue: mockJobsService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();
@@ -192,7 +204,7 @@ describe('Books ownership boundaries', () => {
     });
 
     it('returns the job for the owning user', async () => {
-      prisma.job.findFirst.mockResolvedValue({
+      const persistentJobRow = {
         id: jobA,
         userId: userA,
         type: 'GENERATE_BOOK',
@@ -205,15 +217,19 @@ describe('Books ownership boundaries', () => {
         queuedAt: new Date(),
         startedAt: new Date(),
         completedAt: new Date(),
-      });
+      };
+      mockJobsService.findGenerationJobForUser.mockResolvedValue(
+        persistentJobRow,
+      );
       mockQueue.getJob.mockResolvedValue(null);
 
       const result = await service.getGenerationJob(userA, jobA);
 
       expect(result.id).toBe(jobA);
-      expect(prisma.job.findFirst).toHaveBeenCalledWith({
-        where: { id: jobA, userId: userA, type: 'GENERATE_BOOK' },
-      });
+      expect(mockJobsService.findGenerationJobForUser).toHaveBeenCalledWith(
+        userA,
+        jobA,
+      );
     });
   });
 

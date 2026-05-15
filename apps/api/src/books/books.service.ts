@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import type { Book, BookStatus, Job as PersistentJob } from '@prisma/client';
+import type { Book, BookStatus } from '@prisma/client';
 import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 
+import { JobsService } from '../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateBookDto } from './dto/create-book.dto';
@@ -61,6 +62,7 @@ type FreeUsageUpdateResult = {
 export class BooksService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly jobs: JobsService,
     @InjectQueue(GENERATION_QUEUE)
     private readonly generationQueue: Queue,
   ) {}
@@ -202,7 +204,7 @@ export class BooksService {
     } catch (error) {
       const message = this.formatError(error);
 
-      await this.markQueueingFailed(persistentJob.id, book.id, message);
+      await this.jobs.markQueueingFailed(persistentJob.id, book.id, message);
       await this.prisma.user.updateMany({
         where: {
           id: userId,
@@ -265,7 +267,7 @@ export class BooksService {
       await this.enqueueGenerationJob(bookId, persistentJob.id);
     } catch (error) {
       const message = this.formatError(error);
-      await this.markQueueingFailed(persistentJob.id, bookId, message);
+      await this.jobs.markQueueingFailed(persistentJob.id, bookId, message);
       throw error;
     }
 
@@ -332,7 +334,7 @@ export class BooksService {
   async getBookProgress(userId: string, bookId: string): Promise<BookProgress> {
     await this.findOwnedBook(userId, bookId);
 
-    const persistentJob = await this.findLatestGenerationJob(bookId);
+    const persistentJob = await this.jobs.findLatestGenerationJob(bookId);
     const job = persistentJob
       ? await this.generationQueue.getJob(persistentJob.id)
       : await this.generationQueue.getJob(`book-${bookId}`);
@@ -372,13 +374,10 @@ export class BooksService {
   }
 
   async getGenerationJob(userId: string, jobId: string) {
-    const persistentJob = await this.prisma.job.findFirst({
-      where: {
-        id: jobId,
-        userId,
-        type: 'GENERATE_BOOK',
-      },
-    });
+    const persistentJob = await this.jobs.findGenerationJobForUser(
+      userId,
+      jobId,
+    );
 
     if (!persistentJob) {
       throw new NotFoundException('Job not found');
@@ -464,16 +463,6 @@ export class BooksService {
     );
   }
 
-  private async findLatestGenerationJob(bookId: string) {
-    return this.prisma.job.findFirst({
-      where: {
-        bookId,
-        type: 'GENERATE_BOOK',
-      },
-      orderBy: { queuedAt: 'desc' },
-    });
-  }
-
   private enqueueGenerationJob(bookId: string, persistentJobId: string) {
     return this.generationQueue.add(
       'generate-book',
@@ -492,50 +481,28 @@ export class BooksService {
     );
   }
 
-  private async markQueueingFailed(
-    persistentJobId: string,
-    bookId: string,
-    message: string,
-  ) {
-    await this.prisma.$transaction([
-      this.prisma.job.update({
-        where: { id: persistentJobId },
-        data: {
-          status: 'FAILED',
-          errorMessage: message,
-          completedAt: new Date(),
-          result: {
-            status: 'failed',
-            error: message,
-          },
-        },
-      }),
-      this.prisma.book.update({
-        where: { id: bookId },
-        data: {
-          status: 'FAILED',
-          errorMessage: message,
-        },
-      }),
-    ]);
-  }
+  private toProgressFromPersistentJob(
+    persistentJob: Awaited<ReturnType<JobsService['findLatestGenerationJob']>>,
+  ): BookProgress {
+    if (!persistentJob) {
+      return { progress: 0, status: 'pending' };
+    }
 
-  private toProgressFromPersistentJob(job: PersistentJob): BookProgress {
-    const result = this.toRecord(job.result);
+    const result = this.toRecord(persistentJob.result);
     const progress = this.optionalNumber(result.progress);
 
     return {
       progress:
         progress ??
-        (job.status === 'COMPLETED'
+        (persistentJob.status === 'COMPLETED'
           ? 100
-          : job.status === 'PROCESSING'
+          : persistentJob.status === 'PROCESSING'
             ? 5
             : 0),
-      status: job.status.toLowerCase(),
+      status: persistentJob.status.toLowerCase(),
       completedPages: this.optionalNumber(result.completedPages),
       totalPages: this.optionalNumber(result.totalPages),
-      error: job.errorMessage ?? this.optionalString(result.error),
+      error: persistentJob.errorMessage ?? this.optionalString(result.error),
     };
   }
 

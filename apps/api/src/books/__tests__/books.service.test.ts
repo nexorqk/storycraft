@@ -4,6 +4,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 
 import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
 
 const mockPrismaService = {
@@ -46,11 +47,21 @@ const mockQueue = {
   getJob: jest.fn(),
 };
 
+const mockJobsService = {
+  markQueueingFailed: jest.fn(),
+  findLatestGenerationJob: jest.fn(),
+  findGenerationJobForUser: jest.fn(),
+  listJobsForBook: jest.fn(),
+};
+
 describe('BooksService', () => {
   let service: BooksService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockJobsService.markQueueingFailed.mockResolvedValue(undefined);
+    mockJobsService.findLatestGenerationJob.mockResolvedValue(null);
+    mockJobsService.findGenerationJobForUser.mockResolvedValue(null);
     mockPrismaService.$queryRaw.mockResolvedValue([
       {
         freeGenerationsUsed: 1,
@@ -71,6 +82,7 @@ describe('BooksService', () => {
       providers: [
         BooksService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: JobsService, useValue: mockJobsService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();
