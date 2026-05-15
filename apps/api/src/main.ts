@@ -7,7 +7,9 @@ import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
+import { csrfMiddleware } from './common/http/csrf.middleware';
 import { requestIdMiddleware } from './common/http/request-id.middleware';
+import { securityHeadersMiddleware } from './common/http/security-headers.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,10 +19,14 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
+  app.use(securityHeadersMiddleware);
   app.use(requestIdMiddleware);
   app.use(cookieParser());
+  app.use(csrfMiddleware);
   app.enableCors({
     origin: webOrigin,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-csrf-token', 'x-request-id'],
     credentials: true,
   });
   app.useGlobalPipes(

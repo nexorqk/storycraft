@@ -1,4 +1,4 @@
-import { API_URL } from './auth-api';
+import { request } from './api-client';
 
 export type AdminTemplateSummary = {
   id: string;
@@ -36,24 +36,6 @@ export type AdminTemplateDetail = {
   updatedAt: string;
   pages: AdminTemplatePage[];
 };
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`Request failed: ${response.status} ${message}`);
-  }
-
-  return (await response.json()) as T;
-}
 
 export async function listAdminTemplates() {
   return request<{ templates: AdminTemplateSummary[] }>('/admin/templates');

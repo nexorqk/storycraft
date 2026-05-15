@@ -1,4 +1,4 @@
-import { API_URL } from './auth-api';
+import { request } from './api-client';
 
 export type ChildProfile = {
   id: string;
@@ -16,37 +16,6 @@ export type ChildPayload = {
   interests?: string[];
   readingLevel?: string;
 };
-
-async function parseApiError(response: Response) {
-  try {
-    const payload = (await response.json()) as { message?: unknown };
-
-    if (typeof payload.message === 'string') {
-      return payload.message;
-    }
-  } catch {
-    // Fall through to the generic status message.
-  }
-
-  return `Request failed with ${response.status}`;
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(await parseApiError(response));
-  }
-
-  return (await response.json()) as T;
-}
 
 export async function listChildren() {
   return request<{ children: ChildProfile[] }>('/children');

@@ -42,6 +42,10 @@ const envSchema = z.object({
     .enum(['1024x1024', '1024x1792', '1792x1024'])
     .default('1024x1024'),
   DALLE_QUALITY: z.enum(['standard', 'hd']).default('standard'),
+  RATE_LIMIT_SHORT_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_SHORT_LIMIT: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_LONG_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  RATE_LIMIT_LONG_LIMIT: z.coerce.number().int().positive().default(300),
 });
 
 export type Env = z.infer<typeof envSchema>;

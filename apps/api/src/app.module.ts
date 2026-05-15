@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BooksModule } from './books/books.module';
+import { throttlerModule, throttlerGuardProvider } from './common/http/throttler.config';
 import { ChildrenModule } from './children/children.module';
 import { validateEnv } from './config/env.validation';
 import { GenerationModule } from './generation/generation.module';
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    throttlerModule,
     PrismaModule,
     HealthModule,
     AuthModule,
@@ -36,5 +38,6 @@ import { UsersModule } from './users/users.module';
     AdminModule,
     GenerationQueueModule,
   ],
+  providers: [throttlerGuardProvider],
 })
 export class AppModule {}
