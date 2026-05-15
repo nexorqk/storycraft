@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import type { StoryPageRequest, StoryPageResult } from './types';
 import { OpenAiProvider } from './openai.provider';
+import { DallEProvider } from './dalle.provider';
 
 @Injectable()
 export class GenerationService {
@@ -11,6 +13,8 @@ export class GenerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly openAi: OpenAiProvider,
+    private readonly dallE: DallEProvider,
+    private readonly storage: StorageService,
   ) {}
 
   async generateBook(bookId: string): Promise<void> {
@@ -54,24 +58,61 @@ export class GenerationService {
         };
 
         this.logger.log(
-          `Generating page ${templatePage.pageNumber} for book ${bookId}`,
+          `Generating text for page ${templatePage.pageNumber} of book ${bookId}`,
         );
 
-        const result = await this.openAi.generatePage(request);
-        generatedPages.push(result);
+        const storyResult = await this.openAi.generatePage(request);
+        generatedPages.push(storyResult);
 
-        await this.prisma.bookPage.create({
+        const bookPage = await this.prisma.bookPage.create({
           data: {
             bookId,
             templatePageId: templatePage.id,
             pageNumber: templatePage.pageNumber,
-            text: result.text,
-            illustrationPrompt: result.illustrationPrompt,
+            text: storyResult.text,
+            illustrationPrompt: storyResult.illustrationPrompt,
           },
         });
 
         this.logger.log(
-          `Page ${templatePage.pageNumber} generated for book ${bookId}`,
+          `Text generated for page ${templatePage.pageNumber} of book ${bookId}`,
+        );
+
+        this.logger.log(
+          `Generating illustration for page ${templatePage.pageNumber} of book ${bookId}`,
+        );
+
+        const illustrationResult = await this.dallE.generate({
+          prompt: storyResult.illustrationPrompt,
+          bookId,
+          pageNumber: templatePage.pageNumber,
+        });
+
+        const objectKey = this.storage.buildKey(
+          'illustrations',
+          bookId,
+          `${templatePage.pageNumber}.png`,
+        );
+
+        await this.storage.uploadFile(
+          objectKey,
+          illustrationResult.buffer,
+          illustrationResult.mimeType,
+        );
+
+        await this.prisma.illustration.create({
+          data: {
+            bookId,
+            pageId: bookPage.id,
+            status: 'COMPLETED',
+            prompt: storyResult.illustrationPrompt,
+            objectKey,
+            provider: 'dall-e',
+          },
+        });
+
+        this.logger.log(
+          `Illustration uploaded for page ${templatePage.pageNumber} of book ${bookId}`,
         );
       }
 

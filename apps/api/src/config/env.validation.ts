@@ -37,6 +37,11 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   OPENAI_API_KEY: z.string().default('replace-me'),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  DALLE_MODEL: z.string().default('dall-e-3'),
+  DALLE_SIZE: z
+    .enum(['1024x1024', '1024x1792', '1792x1024'])
+    .default('1024x1024'),
+  DALLE_QUALITY: z.enum(['standard', 'hd']).default('standard'),
 });
 
 export type Env = z.infer<typeof envSchema>;

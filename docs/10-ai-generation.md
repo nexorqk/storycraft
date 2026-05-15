@@ -57,10 +57,10 @@ Flow:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | `replace-me` | OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model to use |
+| Variable         | Default       | Description         |
+| ---------------- | ------------- | ------------------- |
+| `OPENAI_API_KEY` | `replace-me`  | OpenAI API key      |
+| `OPENAI_MODEL`   | `gpt-4o-mini` | OpenAI model to use |
 
 ### Dependencies
 
