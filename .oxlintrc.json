@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/dkube-schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "warn",
+    "perf": "warn",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    "typescript/no-extraneous-class": ["error", { "allowWithDecorator": true }],
+    "eslint/no-unused-vars": ["error", { "ignorePattern": "^_" }],
+    "unicorn/no-array-sort": "off",
+    "eslint/new-cap": "off",
+    "eslint/sort-keys": "off",
+    "eslint/sort-imports": "off",
+    "eslint/no-magic-numbers": "off",
+    "eslint/max-lines-per-function": "off",
+    "eslint/max-statements": "off",
+    "eslint/func-style": "off",
+    "eslint/id-length": "off",
+    "eslint/init-declarations": "off",
+    "eslint/prefer-destructuring": "off",
+    "eslint/no-await-in-loop": "off",
+    "eslint/no-negated-condition": "off",
+    "unicorn/no-negated-condition": "off",
+    "eslint/require-await": "off",
+    "unicorn/no-useless-undefined": "off",
+    "unicorn/prefer-string-replace-all": "off",
+    "unicorn/prefer-set-has": "off",
+    "unicorn/no-immediate-mutation": "off",
+    "eslint/require-unicode-regexp": "off",
+    "eslint/max-lines": "off",
+    "eslint/no-loop-func": "off",
+    "unicorn/consistent-function-scoping": "off",
+  },
+  "ignorePatterns": [
+    "node_modules",
+    ".next",
+    "dist",
+    "coverage"
+  ]
+}

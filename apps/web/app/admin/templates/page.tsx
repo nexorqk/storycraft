@@ -7,7 +7,6 @@ import { AuthPanel } from '../../components/auth-panel';
 import type {
   AdminTemplateSummary,
   AdminTemplateDetail,
-  AdminTemplatePage,
 } from '../../../lib/admin-templates-api';
 import {
   listAdminTemplates,
@@ -26,19 +25,6 @@ type EditView = { view: 'edit'; templateId: string };
 type DetailView = { view: 'detail'; templateId: string };
 
 type PageState = ListView | CreateView | EditView | DetailView;
-
-const emptyTemplate = {
-  slug: '',
-  title: '',
-  description: '',
-  language: 'ru',
-  ageMin: '',
-  ageMax: '',
-  pageCount: 8,
-  storyPrompt: '',
-  illustrationStylePrompt: '',
-  isActive: true,
-};
 
 export default function AdminTemplatesPage() {
   const [page, setPage] = useState<PageState>({ view: 'list' });

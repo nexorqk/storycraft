@@ -200,7 +200,7 @@ export class AdminTemplatesService {
     pageId: string,
     dto: UpdateAdminTemplatePageDto,
   ): Promise<AdminTemplatePage> {
-    const existing = await this.findOwnedPage(templateId, pageId);
+    await this.findOwnedPage(templateId, pageId);
 
     const page = await this.prisma.templatePage.update({
       where: { id: pageId },

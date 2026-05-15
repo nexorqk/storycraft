@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, Image } from '@react-pdf/renderer';
 
 export interface PdfPageData {
   pageNumber: number;

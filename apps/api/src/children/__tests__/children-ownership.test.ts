@@ -7,7 +7,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 const userA = 'user-a';
 const userB = 'user-b';
 const childAId = 'child-a';
-const childBId = 'child-b';
 
 function makePrismaMock() {
   return {
@@ -28,17 +27,6 @@ const childARow = {
   birthDate: new Date('2020-01-01'),
   interests: ['dinosaurs'],
   readingLevel: 'beginner',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
-const childBRow = {
-  id: childBId,
-  userId: userB,
-  name: 'Dasha',
-  birthDate: new Date('2019-06-01'),
-  interests: ['space'],
-  readingLevel: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
