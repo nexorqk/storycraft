@@ -5,7 +5,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppShell } from '../components/app-shell';
 import { AuthPanel } from '../components/auth-panel';
 import type { BookSummary } from '../../lib/books-api';
-import { listBooks, deleteBook, getBookProgress } from '../../lib/books-api';
+import {
+  listBooks,
+  deleteBook,
+  getBookProgress,
+  getPdfUrl,
+} from '../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
@@ -31,6 +36,7 @@ export default function BooksPage() {
       { progress: number; completedPages?: number; totalPages?: number }
     >
   >({});
+  const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBooks = useCallback(() => {
@@ -40,6 +46,21 @@ export default function BooksPage() {
       .then((data) => {
         if (!cancelled) {
           setBooks(data.books);
+
+          const completedBooks = data.books.filter(
+            (b) => b.status === 'COMPLETED' && b.pdfObjectKey,
+          );
+
+          for (const book of completedBooks) {
+            getPdfUrl(book.id)
+              .then((pdfData) => {
+                if (!cancelled && pdfData.url) {
+                  setPdfUrls((prev) => ({ ...prev, [book.id]: pdfData.url! }));
+                }
+              })
+              .catch(() => {});
+          }
+
           setLoading(false);
         }
       })
@@ -212,9 +233,19 @@ export default function BooksPage() {
 
                 {book.status === 'COMPLETED' && book.pdfObjectKey && (
                   <div className="card-actions">
-                    <button className="primary-button" type="button">
-                      Download PDF
-                    </button>
+                    {pdfUrls[book.id] ? (
+                      <a
+                        href={pdfUrls[book.id]}
+                        className="primary-button"
+                        download
+                      >
+                        Download PDF
+                      </a>
+                    ) : (
+                      <button className="primary-button" type="button" disabled>
+                        Preparing...
+                      </button>
+                    )}
                   </div>
                 )}
 

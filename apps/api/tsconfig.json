@@ -14,8 +14,9 @@
     "baseUrl": ".",
     "incremental": true,
     "strictPropertyInitialization": false,
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

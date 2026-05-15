@@ -100,3 +100,7 @@ export async function getBookProgress(bookId: string) {
     };
   }>(`/books/${bookId}/progress`);
 }
+
+export async function getPdfUrl(bookId: string) {
+  return request<{ url: string | null }>(`/books/${bookId}/pdf-url`);
+}

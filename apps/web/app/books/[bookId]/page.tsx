@@ -6,7 +6,12 @@ import { useParams } from 'next/navigation';
 import { AppShell } from '../../components/app-shell';
 import { AuthPanel } from '../../components/auth-panel';
 import type { BookDetail } from '../../../lib/books-api';
-import { getBook, generateBook, getBookProgress } from '../../../lib/books-api';
+import {
+  getBook,
+  generateBook,
+  getBookProgress,
+  getPdfUrl,
+} from '../../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
@@ -31,6 +36,7 @@ export default function BookDetailPage() {
   } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBook = useCallback(() => {
@@ -40,6 +46,17 @@ export default function BookDetailPage() {
       .then((data) => {
         if (!cancelled) {
           setBook(data.book);
+
+          if (data.book.status === 'COMPLETED' && data.book.pdfObjectKey) {
+            getPdfUrl(bookId)
+              .then((pdfData) => {
+                if (!cancelled) {
+                  setPdfUrl(pdfData.url);
+                }
+              })
+              .catch(() => {});
+          }
+
           setLoading(false);
         }
       })
@@ -239,9 +256,15 @@ export default function BookDetailPage() {
           <h2>Your book is ready!</h2>
           <p>The PDF has been generated and is ready for download.</p>
           <div className="card-actions" style={{ marginTop: 16 }}>
-            <button className="primary-button" type="button">
-              Download PDF
-            </button>
+            {pdfUrl ? (
+              <a href={pdfUrl} className="primary-button" download>
+                Download PDF
+              </a>
+            ) : (
+              <button className="primary-button" type="button" disabled>
+                Preparing download...
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { PdfService } from '../pdf/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import type { StoryPageRequest, StoryPageResult } from './types';
@@ -17,6 +18,7 @@ export class GenerationService {
     private readonly openAi: OpenAiProvider,
     private readonly dallE: DallEProvider,
     private readonly storage: StorageService,
+    private readonly pdf: PdfService,
   ) {}
 
   async generateBook(
@@ -122,11 +124,16 @@ export class GenerationService {
         }
       }
 
+      this.logger.log(`Generating PDF for book ${bookId}`);
+
+      const pdfObjectKey = await this.pdf.generateBookPdf(bookId);
+
       await this.prisma.book.update({
         where: { id: bookId },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
+          pdfObjectKey,
         },
       });
 

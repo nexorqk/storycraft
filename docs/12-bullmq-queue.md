@@ -96,8 +96,57 @@ GenerationQueueModule
 
 ## Frontend Integration
 
-The `/books` and `/books/[bookId]` pages can poll `GET /api/books/:id/progress`
-to show a progress bar during generation.
+### `/books` (Library)
+
+- Polls progress for all PROCESSING books every 3 seconds.
+- Shows inline progress bar with page count on each book card.
+- Auto-refreshes the book list when generation completes or fails.
+
+### `/books/[bookId]` (Book Detail)
+
+- Shows "Generate Book" button for PENDING and FAILED books.
+- Shows progress bar with polling (3s interval) for PROCESSING books.
+- Auto-reloads book data when generation completes or fails.
+- Displays error message if generation fails.
+
+### API Client Functions
+
+- `generateBook(bookId)` — triggers generation via `POST /api/books/:id/generate`.
+- `getBookProgress(bookId)` — fetches progress via `GET /api/books/:id/progress`.
+
+## Additional API Endpoints
+
+### POST /api/books/:bookId/generate
+
+Manually triggers generation for a book. Useful for retrying failed books.
+
+- Validates book ownership.
+- Rejects if book is already PROCESSING.
+- Clears existing pages and illustrations before re-generating.
+- Returns `{ bookId, jobId, status: 'queued' }`.
+
+### GET /api/books/jobs/:jobId
+
+Returns detailed job information from BullMQ:
+
+```json
+{
+  "id": "book-abc123",
+  "name": "generate-book",
+  "state": "active",
+  "progress": 45,
+  "data": {
+    "bookId": "abc123",
+    "status": "generating",
+    "completedPages": 3,
+    "totalPages": 8
+  },
+  "attemptsMade": 0,
+  "processedOn": "2026-05-15T00:00:00.000Z",
+  "finishedOn": null,
+  "failedReason": null
+}
+```
 
 ## Verification
 
@@ -134,3 +183,41 @@ Add frontend progress polling on the book detail page:
 - show a progress bar with page count;
 - auto-refresh when generation completes;
 - show error state on failure.
+
+## PDF Generation
+
+After all pages and illustrations are generated, the pipeline automatically
+creates a PDF using `@react-pdf/renderer`.
+
+### PdfService
+
+Located in `apps/api/src/pdf/pdf.service.ts`.
+
+1. Fetches book with pages and illustrations.
+2. Generates presigned download URLs for each illustration (valid 1 hour).
+3. Renders a `BookDocument` React component to a PDF stream.
+4. Converts the stream to a Buffer.
+5. Uploads to S3 at `books/{bookId}/book.pdf`.
+6. Returns the `objectKey` for storage on the Book record.
+
+### BookDocument
+
+Located in `apps/api/src/pdf/book-document.tsx`.
+
+React-PDF component that renders:
+
+- Cover page with title and child's name.
+- One page per story page with illustration (if available) and text.
+- Page numbers at the bottom.
+
+### GET /api/books/:bookId/pdf-url
+
+Returns a presigned download URL for the book's PDF:
+
+```json
+{
+  "url": "https://s3.example.com/...?X-Amz-Signature=..."
+}
+```
+
+Returns `{ "url": null }` if the book has no PDF yet.

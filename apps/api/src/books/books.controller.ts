@@ -12,6 +12,7 @@ import {
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
+import { StorageService } from '../storage/storage.service';
 import type { PublicUser } from '../users/users.service';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
@@ -19,7 +20,10 @@ import { CreateBookDto } from './dto/create-book.dto';
 @Controller('books')
 @UseGuards(SessionAuthGuard)
 export class BooksController {
-  constructor(private readonly books: BooksService) {}
+  constructor(
+    private readonly books: BooksService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   async listBooks(@CurrentUser() user: PublicUser) {
@@ -40,6 +44,21 @@ export class BooksController {
     @Param('bookId', new ParseUUIDPipe()) bookId: string,
   ) {
     return { progress: await this.books.getBookProgress(user.id, bookId) };
+  }
+
+  @Get(':bookId/pdf-url')
+  async getPdfUrl(
+    @CurrentUser() user: PublicUser,
+    @Param('bookId', new ParseUUIDPipe()) bookId: string,
+  ) {
+    const book = await this.books.getBook(user.id, bookId);
+
+    if (!book.pdfObjectKey) {
+      return { url: null };
+    }
+
+    const url = await this.storage.getSignedDownloadUrl(book.pdfObjectKey);
+    return { url };
   }
 
   @Post()
