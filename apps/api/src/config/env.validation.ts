@@ -5,6 +5,7 @@ const envSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   API_PORT: z.coerce.number().int().positive().default(3001),
+  API_ORIGIN: z.string().url().default('http://localhost:3001'),
   WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
   DATABASE_URL: z
     .string()
@@ -14,7 +15,17 @@ const envSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6379'),
   GOOGLE_CLIENT_ID: z.string().default('replace-me'),
   GOOGLE_CLIENT_SECRET: z.string().default('replace-me'),
+  GOOGLE_CALLBACK_URL: z
+    .string()
+    .url()
+    .default('http://localhost:3001/api/auth/google/callback'),
   SESSION_SECRET: z.string().default('replace-me'),
+  AUTH_COOKIE_NAME: z.string().default('storycraft_session'),
+  AUTH_SESSION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 30),
   S3_ENDPOINT: z.string().url().default('http://localhost:3900'),
   S3_REGION: z.string().default('garage'),
   S3_BUCKET: z.string().default('storycraft-local'),

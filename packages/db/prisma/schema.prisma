@@ -119,6 +119,7 @@ model Book {
   illustrations Illustration[]
   jobs         Job[]
   pages        BookPage[]
+  ratings      Rating[]
   template     Template       @relation(fields: [templateId], references: [id], onDelete: Restrict)
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -247,6 +248,7 @@ model Rating {
   value     Int
   comment   String?
   createdAt DateTime @default(now())
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, bookId])
@@ -264,4 +266,3 @@ model Referral {
 
   @@index([referrerUserId])
 }
-
