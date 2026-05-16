@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Templates', href: '/templates' },
   { label: 'Create', href: '/create' },
   { label: 'Books', href: '/books' },
-  { label: 'Settings', href: '#' },
+  { label: 'Settings', href: '/settings' },
 ];
 
 type AppShellProps = {
@@ -22,26 +22,16 @@ export function AppShell({ active, children }: AppShellProps) {
         <p className="brand">Storycraft</p>
         <p className="brand-subtitle">AI books for children</p>
         <nav className="nav">
-          {navItems.map((item) =>
-            item.href === '#' ? (
-              <span
-                className="nav-item nav-item-disabled"
-                data-active={item.label === active}
-                key={item.label}
-              >
-                {item.label}
-              </span>
-            ) : (
-              <Link
-                className="nav-item"
-                data-active={item.label === active}
-                href={item.href}
-                key={item.label}
-              >
-                {item.label}
-              </Link>
-            ),
-          )}
+          {navItems.map((item) => (
+            <Link
+              className="nav-item"
+              data-active={item.label === active}
+              href={item.href}
+              key={item.label}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="sidebar-footer">

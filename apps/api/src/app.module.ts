@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AccountModule } from './account/account.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BooksModule } from './books/books.module';
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module';
     StorageModule,
     GenerationModule,
     AdminModule,
+    AccountModule,
     GenerationQueueModule,
   ],
   providers: [throttlerGuardProvider],

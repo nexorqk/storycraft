@@ -65,7 +65,12 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(200)
-  logout(@Res({ passthrough: true }) response: Response) {
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.revokeSessionFromRequest(request);
+
     response.clearCookie(
       this.authService.getSessionCookieName(),
       this.authService.getSessionCookieOptions(),
