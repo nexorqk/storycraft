@@ -11,6 +11,7 @@ import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 import { JobsService } from '../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import type { CreateBookDto } from './dto/create-book.dto';
 
 export type BookProgress = {
@@ -63,6 +64,7 @@ export class BooksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
+    private readonly storage: StorageService,
     @InjectQueue(GENERATION_QUEUE)
     private readonly generationQueue: Queue,
   ) {}
@@ -324,7 +326,29 @@ export class BooksService {
   }
 
   async deleteBook(userId: string, bookId: string) {
-    await this.findOwnedBook(userId, bookId);
+    const book = await this.prisma.book.findFirst({
+      where: { id: bookId, userId },
+      select: {
+        id: true,
+        pdfObjectKey: true,
+        illustrations: {
+          select: {
+            objectKey: true,
+          },
+        },
+      },
+    });
+
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    const objectKeys = [
+      book.pdfObjectKey,
+      ...book.illustrations.map((illustration) => illustration.objectKey),
+    ].filter((key): key is string => Boolean(key));
+
+    await this.storage.deleteFiles(objectKeys);
 
     await this.prisma.book.delete({
       where: { id: bookId },

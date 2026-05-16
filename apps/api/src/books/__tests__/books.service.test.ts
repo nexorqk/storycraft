@@ -6,6 +6,7 @@ import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
+import { StorageService } from '../../storage/storage.service';
 
 const mockPrismaService = {
   $transaction: jest.fn(),
@@ -54,6 +55,10 @@ const mockJobsService = {
   listJobsForBook: jest.fn(),
 };
 
+const mockStorageService = {
+  deleteFiles: jest.fn(),
+};
+
 describe('BooksService', () => {
   let service: BooksService;
 
@@ -83,6 +88,7 @@ describe('BooksService', () => {
         BooksService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JobsService, useValue: mockJobsService },
+        { provide: StorageService, useValue: mockStorageService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();
@@ -527,11 +533,23 @@ describe('BooksService', () => {
 
   describe('deleteBook', () => {
     it('deletes a book owned by the user', async () => {
-      mockPrismaService.book.findFirst.mockResolvedValue({ id: 'book-1' });
+      mockPrismaService.book.findFirst.mockResolvedValue({
+        id: 'book-1',
+        pdfObjectKey: 'books/book-1/book.pdf',
+        illustrations: [
+          { objectKey: 'illustrations/book-1/1.png' },
+          { objectKey: null },
+        ],
+      });
+      mockStorageService.deleteFiles.mockResolvedValue(undefined);
       mockPrismaService.book.delete.mockResolvedValue({});
 
       await service.deleteBook('user-1', 'book-1');
 
+      expect(mockStorageService.deleteFiles).toHaveBeenCalledWith([
+        'books/book-1/book.pdf',
+        'illustrations/book-1/1.png',
+      ]);
       expect(mockPrismaService.book.delete).toHaveBeenCalledWith({
         where: { id: 'book-1' },
       });

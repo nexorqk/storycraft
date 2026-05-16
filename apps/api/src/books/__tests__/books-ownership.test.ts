@@ -6,6 +6,7 @@ import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
+import { StorageService } from '../../storage/storage.service';
 
 const userA = 'user-a';
 const userB = 'user-b';
@@ -54,6 +55,10 @@ const mockJobsService = {
   findLatestGenerationJob: jest.fn(),
   findGenerationJobForUser: jest.fn(),
   listJobsForBook: jest.fn(),
+};
+
+const mockStorageService = {
+  deleteFiles: jest.fn(),
 };
 
 function setupCreateBookMocks(prisma: ReturnType<typeof makePrismaMock>) {
@@ -110,6 +115,7 @@ describe('Books ownership boundaries', () => {
         BooksService,
         { provide: PrismaService, useValue: prisma },
         { provide: JobsService, useValue: mockJobsService },
+        { provide: StorageService, useValue: mockStorageService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();

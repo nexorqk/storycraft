@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -51,6 +53,31 @@ export class StorageService {
     });
 
     return getSignedUrl(this.client, command, { expiresIn });
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    this.logger.log(`Deleting file: ${key}`);
+
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+
+    await this.client.send(command);
+  }
+
+  async deleteFiles(keys: string[]): Promise<void> {
+    const uniqueKeys = [...new Set(keys.filter(Boolean))];
+
+    await Promise.all(uniqueKeys.map((key) => this.deleteFile(key)));
+  }
+
+  async checkReadiness(): Promise<void> {
+    await this.client.send(
+      new HeadBucketCommand({
+        Bucket: this.bucket,
+      }),
+    );
   }
 
   buildKey(...parts: string[]): string {
