@@ -1,35 +1,54 @@
-# До кода
+# Before Production
 
-| Пункт                | Статус                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| MVP scope            | Да, описан в IMPLEMENTATION_PLAN.md:32.                                                                           |
-| User flow            | Да, есть create flow, library, book detail/download в web.                                                        |
-| Структура шаблонов   | Да, Template + TemplatePage в packages/db/prisma/schema.prisma:113.                                               |
-| AI provider strategy | Да, реализована через injection tokens (`STORY_PROVIDER`, `ILLUSTRATION_PROVIDER`) с поддержкой mock-провайдеров. |
-| Free-plan лимиты     | Да, лимит 3 книги в месяц. Seed и код синхронизированы.                                                           |
-| Env-переменные       | Да, `.env.example` содержит все переменные включая AI, rate-limiting.                                             |
-| Docker Compose       | Да: Postgres, Redis, Garage, API, Web, и ежедневные бэкапы БД в docker-compose.yml.                               |
-| Схема данных         | Да, покрывает MVP + будущий billing/referral/rating.                                                              |
+This file tracks repository-level readiness. External deployment steps are
+listed separately because they require real provider accounts, secrets, domains,
+or legal review.
 
-# До реального AI
+## Done In Repo
 
-| Пункт                    | Статус                                                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Mock generation pipeline | Да: `USE_MOCK_AI=true` в `.env` включает `MockStoryProvider` и `MockIllustrationProvider`. Генерирует текст и PNG-заглушки без API ключей. |
-| Job statuses             | Да: QUEUED/PROCESSING/COMPLETED/FAILED, persistent Job, progress API.                                                                      |
-| Storage abstraction      | Да: apps/api/src/storage/storage.service.ts:10.                                                                                            |
-| Retries                  | Да: `GenerationService.cleanupPartialData()` очищает частичные данные перед каждой генерацией, делая retries идемпотентными.               |
-| Error logging            | Да: `StructuredLogger` выводит JSON-логи в production, обычные логи в development.                                                         |
-| PDF prototype            | Да: apps/api/src/pdf/pdf.service.ts:26.                                                                                                    |
+| Area                           | Status                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| MVP scope and flow             | Done: Google auth, children, templates, create flow, library, book detail, PDF download.                                        |
+| Real AI path                   | Done: provider abstractions, OpenAI text, DALL-E images, mock mode, retries, timeout handling, non-retryable provider errors.   |
+| Queue state                    | Done: BullMQ job plus persistent `Job` records, progress API, failed job history.                                               |
+| Storage privacy                | Done: signed URLs for PDFs/illustrations; book/account deletion removes object keys from S3-compatible storage.                 |
+| Runtime readiness              | Done: readiness checks cover Postgres, BullMQ/Redis, and object storage.                                                        |
+| Production env validation      | Done: production rejects placeholder secrets, mock AI, localhost origins, local DB/Redis/storage defaults.                      |
+| Expensive operation guardrails | Done: generation kill switch, active generation limit, daily generation job limit, estimated book cost cap.                     |
+| Safety gate                    | Done: local safety checks on user inputs and generated story/illustration prompts, plus provider content-policy error handling. |
+| Account data rights            | Done: authenticated account export endpoint, account deletion endpoint, Settings UI, server-side session revocation.            |
+| Migration command              | Done: `pnpm db:migrate:deploy` uses `prisma migrate deploy`.                                                                    |
+| CI                             | Done: GitHub Actions runs install, Prisma generate, format, typecheck, tests, and build.                                        |
+| Formatting/tests               | Done: `pnpm format:check`, `pnpm typecheck`, `pnpm test`, and `pnpm build` are expected release gates.                          |
 
-# До публичного запуска
+## Required Outside Repo
 
-| Пункт                            | Статус                                                                                         |
-| -------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Private storage                  | Частично: доступ через signed URLs, bucket policy можно настроить при деплое.                  |
-| Signed URLs                      | Да: PDF и illustrations через getSignedDownloadUrl.                                            |
-| Privacy policy                   | Да: страница `/privacy` с полной политикой конфиденциальности.                                 |
-| Usage limits                     | Да: free-plan (3 книги/мес) + API rate limit (1000/60с в dev).                                 |
-| Production logs                  | Да: `StructuredLogger` с JSON-форматом, уровнями логирования и контекстом.                     |
-| Backups                          | Да: `db-backup` сервис в docker-compose делает ежедневные дампы PostgreSQL в `/infra/backups`. |
-| Нормальная обработка failed jobs | Да: автоматическая очистка частичных данных перед retry, UI retry через `triggerGeneration()`. |
+| Area              | Required action                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Domains and TLS   | Configure production `WEB_ORIGIN`, `API_ORIGIN`, and `GOOGLE_CALLBACK_URL` with HTTPS domains.                          |
+| Secrets           | Set real Google OAuth, session, OpenAI, database, Redis, and S3 credentials in the deployment platform.                 |
+| Object storage    | Create a private production bucket, deny public reads, enable encryption/versioning if the provider supports it.        |
+| Backups           | Configure encrypted offsite Postgres backups, define retention, and run a restore drill before launch.                  |
+| Monitoring        | Connect production logs, metrics, alerts, and error tracking to the chosen platform.                                    |
+| Legal/compliance  | Review Privacy Policy, data deletion/export behavior, AI provider terms, and child-data obligations for target markets. |
+| Provider controls | Configure OpenAI project limits/budgets and Google OAuth consent screen for public availability.                        |
+| Incident process  | Assign on-call ownership and document how to disable generation with `GENERATION_ENABLED=false`.                        |
+
+## Release Gate Commands
+
+Run these before deploying a release:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm format:check
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+For production database migration:
+
+```bash
+pnpm db:migrate:deploy
+```

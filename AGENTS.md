@@ -42,6 +42,7 @@ The repository is a pnpm monorepo:
 - Run configured tests: `pnpm test`.
 - Check formatting: `pnpm format:check`.
 - Format files: `pnpm format`.
+- Apply production migrations: `pnpm db:migrate:deploy`.
 
 Database commands:
 
