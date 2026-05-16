@@ -32,9 +32,10 @@ export default function AuthCallbackPage() {
           }, 2000);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         setStatus('error');
-        setMessage('Something went wrong. Redirecting to login...');
+        const errorMessage = error?.message || 'Unknown error';
+        setMessage(`Something went wrong (${errorMessage}). Redirecting to login...`);
         setTimeout(() => {
           router.replace('/login');
         }, 2000);

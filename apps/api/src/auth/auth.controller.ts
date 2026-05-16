@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './google-auth.guard';
@@ -53,6 +54,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @SkipThrottle()
   async getCurrentUser(@Req() request: Request) {
     const user = await this.authService.getUserFromRequest(request);
 

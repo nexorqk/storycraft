@@ -1,11 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { PdfService } from '../pdf/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import type { StoryPageRequest, StoryPageResult } from './types';
-import { OpenAiProvider } from './openai.provider';
-import { DallEProvider } from './dalle.provider';
+import type { IllustrationProvider } from './illustration-types';
+import type { StoryPageRequest, StoryPageResult, StoryProvider } from './types';
 
 type ProgressCallback = (completed: number, total: number) => Promise<void>;
 
@@ -15,8 +14,10 @@ export class GenerationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly openAi: OpenAiProvider,
-    private readonly dallE: DallEProvider,
+    @Inject('STORY_PROVIDER')
+    private readonly storyProvider: StoryProvider,
+    @Inject('ILLUSTRATION_PROVIDER')
+    private readonly illustrationProvider: IllustrationProvider,
     private readonly storage: StorageService,
     private readonly pdf: PdfService,
   ) {}
@@ -40,6 +41,8 @@ export class GenerationService {
     const totalPages = book.template.pages.length;
 
     try {
+      await this.cleanupPartialData(bookId);
+
       const childName = book.childNameInStory || book.child.name;
       const childAge = book.child.birthDate
         ? this.calculateAge(book.child.birthDate)
@@ -67,7 +70,7 @@ export class GenerationService {
           `Generating text for page ${templatePage.pageNumber} of book ${bookId}`,
         );
 
-        const storyResult = await this.openAi.generatePage(request);
+        const storyResult = await this.storyProvider.generatePage(request);
         generatedPages.push(storyResult);
 
         const bookPage = await this.prisma.bookPage.create({
@@ -88,7 +91,7 @@ export class GenerationService {
           `Generating illustration for page ${templatePage.pageNumber} of book ${bookId}`,
         );
 
-        const illustrationResult = await this.dallE.generate({
+        const illustrationResult = await this.illustrationProvider.generate({
           prompt: storyResult.illustrationPrompt,
           bookId,
           pageNumber: templatePage.pageNumber,
@@ -169,5 +172,32 @@ export class GenerationService {
     }
 
     return age;
+  }
+
+  private async cleanupPartialData(bookId: string): Promise<void> {
+    const existingPages = await this.prisma.bookPage.findMany({
+      where: { bookId },
+      include: { illustration: true },
+    });
+
+    if (existingPages.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `Cleaning up ${existingPages.length} partial page(s) for book ${bookId} before retry`,
+    );
+
+    const pageIds = existingPages.map((p) => p.id);
+
+    await this.prisma.illustration.deleteMany({
+      where: { pageId: { in: pageIds } },
+    });
+
+    await this.prisma.bookPage.deleteMany({
+      where: { bookId },
+    });
+
+    this.logger.log(`Partial data cleaned for book ${bookId}`);
   }
 }

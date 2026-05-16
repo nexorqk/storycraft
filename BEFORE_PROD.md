@@ -5,32 +5,31 @@
 | MVP scope | Да, описан в IMPLEMENTATION_PLAN.md:32. |
 | User flow | Да, есть create flow, library, book detail/download в web. |
 | Структура шаблонов | Да, Template + TemplatePage в packages/db/prisma/schema.prisma:113. |
-| AI provider strategy | Частично: интерфейсы есть, но runtime-выбор/mock-provider не оформлен. |
-| Free-plan лимиты | Да, лимит применяется атомарно в apps/api/src/books/books.service.ts:146. Есть несостыковка: код использует лимит 3, seed free plan пишет 1. |
-| Env-переменные | Частично: validation знает OpenAI/DALL-E/rate-limit переменные, но .env.example и apps/api/.env.example их не содержат. |
-| Docker Compose | Да: Postgres, Redis, Garage, API, Web в docker-compose.yml:1. |
+| AI provider strategy | Да, реализована через injection tokens (`STORY_PROVIDER`, `ILLUSTRATION_PROVIDER`) с поддержкой mock-провайдеров. |
+| Free-plan лимиты | Да, лимит 3 книги в месяц. Seed и код синхронизированы. |
+| Env-переменные | Да, `.env.example` содержит все переменные включая AI, rate-limiting. |
+| Docker Compose | Да: Postgres, Redis, Garage, API, Web, и ежедневные бэкапы БД в docker-compose.yml. |
 | Схема данных | Да, покрывает MVP + будущий billing/referral/rating. |
 
 # До реального AI
 
 | Пункт | Статус |
 | --- | --- |
-| Mock generation pipeline | Нет как runtime-фича. В тестах провайдеры мокируются, но приложение сразу использует OpenAiProvider и DallEProvider. |
+| Mock generation pipeline | Да: `USE_MOCK_AI=true` в `.env` включает `MockStoryProvider` и `MockIllustrationProvider`. Генерирует текст и PNG-заглушки без API ключей. |
 | Job statuses | Да: QUEUED/PROCESSING/COMPLETED/FAILED, persistent Job, progress API. |
 | Storage abstraction | Да: apps/api/src/storage/storage.service.ts:10. |
-| Retries | Частично: BullMQ attempts: 2 есть, но автоматический retry не идемпотентен. Если сбой случится после создания части страниц, повтор может упасть на @@unique([bookId, pageNumber]). |
-| Error logging | Частично: есть Logger и сохранение errorMessage, но нет production-grade structured logs/aggregation. |
+| Retries | Да: `GenerationService.cleanupPartialData()` очищает частичные данные перед каждой генерацией, делая retries идемпотентными. |
+| Error logging | Да: `StructuredLogger` выводит JSON-логи в production, обычные логи в development. |
 | PDF prototype | Да: apps/api/src/pdf/pdf.service.ts:26. |
 
 # До публичного запуска
 
 | Пункт | Статус |
 | --- | --- |
-| Private storage | Частично: доступ идет через signed URLs, но нет явной bucket policy/infra-настройки приватности. |
+| Private storage | Частично: доступ через signed URLs, bucket policy можно настроить при деплое. |
 | Signed URLs | Да: PDF и illustrations через getSignedDownloadUrl. |
-| Privacy policy | Нет. |
-| Usage limits | Да: free-plan + API rate limit. |
-| Production logs | Нет, только базовый Nest logging. |
-| Backups | Нет. |
-| Нормальная обработка failed jobs | Частично: failed status, error message, UI retry есть; автоматические retries и частичные артефакты требуют доработки. |
-
+| Privacy policy | Да: страница `/privacy` с полной политикой конфиденциальности. |
+| Usage limits | Да: free-plan (3 книги/мес) + API rate limit (1000/60с в dev). |
+| Production logs | Да: `StructuredLogger` с JSON-форматом, уровнями логирования и контекстом. |
+| Backups | Да: `db-backup` сервис в docker-compose делает ежедневные дампы PostgreSQL в `/infra/backups`. |
+| Нормальная обработка failed jobs | Да: автоматическая очистка частичных данных перед retry, UI retry через `triggerGeneration()`. |

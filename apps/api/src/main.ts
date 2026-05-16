@@ -10,9 +10,16 @@ import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
 import { csrfMiddleware } from './common/http/csrf.middleware';
 import { requestIdMiddleware } from './common/http/request-id.middleware';
 import { securityHeadersMiddleware } from './common/http/security-headers.middleware';
+import { StructuredLogger, getLogLevels } from './common/logging/structured-logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const logger = new StructuredLogger('Bootstrap', isProduction);
+
+  const app = await NestFactory.create(AppModule, {
+    logger: getLogLevels(isProduction),
+    bufferLogs: true,
+  });
   const config = app.get(ConfigService);
   const webOrigin = config.getOrThrow<string>('WEB_ORIGIN');
   const port = config.getOrThrow<number>('API_PORT');
@@ -38,7 +45,9 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  logger.log(`Starting API server on port ${port}`, 'Bootstrap');
   await app.listen(port);
+  logger.log(`API server is running on http://localhost:${port}`, 'Bootstrap');
 }
 
 void bootstrap();

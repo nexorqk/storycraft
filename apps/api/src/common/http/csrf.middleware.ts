@@ -6,6 +6,10 @@ const CSRF_HEADER_NAME = 'x-csrf-token';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+const CSRF_SKIP_PATHS = new Set([
+  '/api/auth/logout',
+]);
+
 function generateToken(): string {
   return randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
 }
@@ -27,6 +31,11 @@ export function csrfMiddleware(request: Request, response: Response, next: () =>
       response.locals.csrfToken = newToken;
     }
 
+    next();
+    return;
+  }
+
+  if (CSRF_SKIP_PATHS.has(request.path)) {
     next();
     return;
   }

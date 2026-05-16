@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { GenerationService } from '../generation.service';
-import { OpenAiProvider } from '../openai.provider';
-import { DallEProvider } from '../dalle.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
 import { PdfService } from '../../pdf/pdf.service';
+import type { StoryProvider } from '../types';
+import type { IllustrationProvider } from '../illustration-types';
 
 const mockPrismaService = {
   book: {
@@ -14,9 +14,12 @@ const mockPrismaService = {
   },
   bookPage: {
     create: jest.fn(),
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
   },
   illustration: {
     create: jest.fn(),
+    deleteMany: jest.fn(),
   },
   child: {
     findUnique: jest.fn(),
@@ -26,12 +29,12 @@ const mockPrismaService = {
   },
 };
 
-const mockOpenAiProvider = {
-  generatePage: jest.fn(),
+const mockStoryProvider = {
+  generatePage: jest.fn() as jest.Mock,
 };
 
-const mockDallEProvider = {
-  generate: jest.fn(),
+const mockIllustrationProvider = {
+  generate: jest.fn() as jest.Mock,
 };
 
 const mockStorageService = {
@@ -78,8 +81,8 @@ describe('GenerationService', () => {
       providers: [
         GenerationService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: OpenAiProvider, useValue: mockOpenAiProvider },
-        { provide: DallEProvider, useValue: mockDallEProvider },
+        { provide: 'STORY_PROVIDER', useValue: mockStoryProvider },
+        { provide: 'ILLUSTRATION_PROVIDER', useValue: mockIllustrationProvider },
         { provide: StorageService, useValue: mockStorageService },
         { provide: PdfService, useValue: mockPdfService },
       ],
@@ -91,14 +94,15 @@ describe('GenerationService', () => {
   describe('generateBook', () => {
     it('generates text and illustrations for each page', async () => {
       mockPrismaService.book.findUnique.mockResolvedValue(mockBook);
-      mockOpenAiProvider.generatePage.mockResolvedValue({
+      mockStoryProvider.generatePage.mockResolvedValue({
         text: 'Generated story text',
         illustrationPrompt: 'Generated illustration prompt',
       });
       mockPrismaService.bookPage.create.mockResolvedValue({
         id: 'book-page-1',
       });
-      mockDallEProvider.generate.mockResolvedValue({
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockIllustrationProvider.generate.mockResolvedValue({
         buffer: Buffer.from('image-data'),
         mimeType: 'image/png',
       });
@@ -112,7 +116,7 @@ describe('GenerationService', () => {
 
       await service.generateBook('book-1');
 
-      expect(mockOpenAiProvider.generatePage).toHaveBeenCalledWith(
+      expect(mockStoryProvider.generatePage).toHaveBeenCalledWith(
         expect.objectContaining({
           childName: 'Masha',
           pageNumber: 1,
@@ -120,7 +124,7 @@ describe('GenerationService', () => {
         }),
       );
 
-      expect(mockDallEProvider.generate).toHaveBeenCalledWith({
+      expect(mockIllustrationProvider.generate).toHaveBeenCalledWith({
         prompt: 'Generated illustration prompt',
         bookId: 'book-1',
         pageNumber: 1,
@@ -145,12 +149,13 @@ describe('GenerationService', () => {
 
     it('marks book as COMPLETED and generates PDF on success', async () => {
       mockPrismaService.book.findUnique.mockResolvedValue(mockBook);
-      mockOpenAiProvider.generatePage.mockResolvedValue({
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockStoryProvider.generatePage.mockResolvedValue({
         text: 'Story',
         illustrationPrompt: 'Prompt',
       });
       mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
-      mockDallEProvider.generate.mockResolvedValue({
+      mockIllustrationProvider.generate.mockResolvedValue({
         buffer: Buffer.from('img'),
         mimeType: 'image/png',
       });
@@ -180,12 +185,13 @@ describe('GenerationService', () => {
       };
 
       mockPrismaService.book.findUnique.mockResolvedValue(bookWithCustomName);
-      mockOpenAiProvider.generatePage.mockResolvedValue({
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockStoryProvider.generatePage.mockResolvedValue({
         text: 'Story text',
         illustrationPrompt: 'Illustration prompt',
       });
       mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
-      mockDallEProvider.generate.mockResolvedValue({
+      mockIllustrationProvider.generate.mockResolvedValue({
         buffer: Buffer.from('img'),
         mimeType: 'image/png',
       });
@@ -197,7 +203,7 @@ describe('GenerationService', () => {
 
       await service.generateBook('book-1');
 
-      expect(mockOpenAiProvider.generatePage).toHaveBeenCalledWith(
+      expect(mockStoryProvider.generatePage).toHaveBeenCalledWith(
         expect.objectContaining({
           childName: 'Саша',
           coverStyle: 'cartoon',
@@ -207,12 +213,13 @@ describe('GenerationService', () => {
 
     it('uses child name when childNameInStory is null', async () => {
       mockPrismaService.book.findUnique.mockResolvedValue(mockBook);
-      mockOpenAiProvider.generatePage.mockResolvedValue({
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockStoryProvider.generatePage.mockResolvedValue({
         text: 'Story',
         illustrationPrompt: 'Prompt',
       });
       mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
-      mockDallEProvider.generate.mockResolvedValue({
+      mockIllustrationProvider.generate.mockResolvedValue({
         buffer: Buffer.from('img'),
         mimeType: 'image/png',
       });
@@ -224,7 +231,7 @@ describe('GenerationService', () => {
 
       await service.generateBook('book-1');
 
-      expect(mockOpenAiProvider.generatePage).toHaveBeenCalledWith(
+      expect(mockStoryProvider.generatePage).toHaveBeenCalledWith(
         expect.objectContaining({
           childName: 'Masha',
           coverStyle: 'default',
@@ -234,7 +241,8 @@ describe('GenerationService', () => {
 
     it('marks book as FAILED on error', async () => {
       mockPrismaService.book.findUnique.mockResolvedValue(mockBook);
-      mockOpenAiProvider.generatePage.mockRejectedValue(
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockStoryProvider.generatePage.mockRejectedValue(
         new Error('AI provider error'),
       );
       mockPrismaService.book.update.mockResolvedValue({});
@@ -283,12 +291,13 @@ describe('GenerationService', () => {
       };
 
       mockPrismaService.book.findUnique.mockResolvedValue(bookWithTwoPages);
-      mockOpenAiProvider.generatePage.mockResolvedValue({
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
+      mockStoryProvider.generatePage.mockResolvedValue({
         text: 'Story',
         illustrationPrompt: 'Prompt',
       });
       mockPrismaService.bookPage.create.mockResolvedValue({ id: 'bp-1' });
-      mockDallEProvider.generate.mockResolvedValue({
+      mockIllustrationProvider.generate.mockResolvedValue({
         buffer: Buffer.from('img'),
         mimeType: 'image/png',
       });
@@ -334,6 +343,7 @@ describe('GenerationService', () => {
       };
 
       mockPrismaService.book.findUnique.mockResolvedValue(book);
+      mockPrismaService.bookPage.findMany.mockResolvedValue([]);
       mockPdfService.generateBookPdf.mockResolvedValue('books/book-1/book.pdf');
       mockPrismaService.book.update.mockResolvedValue({});
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import {
   fetchCurrentUser,
@@ -15,6 +16,7 @@ function getDisplayName(user: PublicUser) {
 }
 
 export function AuthPanel() {
+  const router = useRouter();
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<PublicUser | null>(null);
   const [hasAvatarError, setHasAvatarError] = useState(false);
@@ -52,9 +54,7 @@ export function AuthPanel() {
 
     try {
       await logoutCurrentUser();
-      setUser(null);
-      setHasAvatarError(false);
-      setStatus('ready');
+      router.push('/login');
     } finally {
       setIsLoggingOut(false);
     }

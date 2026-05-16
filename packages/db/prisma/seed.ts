@@ -98,13 +98,13 @@ async function main() {
     where: { slug: 'free' },
     update: {
       name: 'Free',
-      monthlyBookLimit: 1,
+      monthlyBookLimit: 3,
       isActive: true,
     },
     create: {
       slug: 'free',
       name: 'Free',
-      monthlyBookLimit: 1,
+      monthlyBookLimit: 3,
     },
   });
 

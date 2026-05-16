@@ -43,6 +43,12 @@ export function AppShell({ active, children }: AppShellProps) {
             ),
           )}
         </nav>
+
+        <div className="sidebar-footer">
+          <Link className="sidebar-link" href="/privacy">
+            Privacy Policy
+          </Link>
+        </div>
       </aside>
 
       <section className="content">{children}</section>

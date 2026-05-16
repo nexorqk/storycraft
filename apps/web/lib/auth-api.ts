@@ -55,20 +55,13 @@ export async function fetchCurrentUser(signal?: AbortSignal) {
 }
 
 export async function logoutCurrentUser() {
-  const csrfToken = getCsrfToken();
-  const headers: Record<string, string> = {};
-
-  if (csrfToken) {
-    headers[CSRF_HEADER_NAME] = csrfToken;
-  }
-
   const response = await fetch(`${API_URL}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
-    headers,
   });
 
   if (!response.ok) {
-    throw new Error(`Logout failed with ${response.status}`);
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Logout failed with ${response.status}: ${errorText}`);
   }
 }
