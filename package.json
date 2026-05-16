@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @storycraft/db prisma:generate",
     "db:migrate": "pnpm --filter @storycraft/db prisma:migrate",
+    "db:migrate:deploy": "pnpm --filter @storycraft/db prisma:migrate:deploy",
     "db:seed": "pnpm --filter @storycraft/db prisma:seed",
     "db:studio": "pnpm --filter @storycraft/db prisma:studio"
   },
