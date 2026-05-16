@@ -10,7 +10,10 @@ import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
 import { csrfMiddleware } from './common/http/csrf.middleware';
 import { requestIdMiddleware } from './common/http/request-id.middleware';
 import { securityHeadersMiddleware } from './common/http/security-headers.middleware';
-import { StructuredLogger, getLogLevels } from './common/logging/structured-logger';
+import {
+  StructuredLogger,
+  getLogLevels,
+} from './common/logging/structured-logger';
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';

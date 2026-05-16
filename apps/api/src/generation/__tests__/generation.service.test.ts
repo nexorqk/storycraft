@@ -82,7 +82,10 @@ describe('GenerationService', () => {
         GenerationService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: 'STORY_PROVIDER', useValue: mockStoryProvider },
-        { provide: 'ILLUSTRATION_PROVIDER', useValue: mockIllustrationProvider },
+        {
+          provide: 'ILLUSTRATION_PROVIDER',
+          useValue: mockIllustrationProvider,
+        },
         { provide: StorageService, useValue: mockStorageService },
         { provide: PdfService, useValue: mockPdfService },
       ],
@@ -106,9 +109,7 @@ describe('GenerationService', () => {
         buffer: Buffer.from('image-data'),
         mimeType: 'image/png',
       });
-      mockStorageService.buildKey.mockReturnValue(
-        'illustrations/book-1/1.png',
-      );
+      mockStorageService.buildKey.mockReturnValue('illustrations/book-1/1.png');
       mockStorageService.uploadFile.mockResolvedValue(undefined);
       mockPrismaService.illustration.create.mockResolvedValue({ id: 'ill-1' });
       mockPdfService.generateBookPdf.mockResolvedValue('books/book-1/book.pdf');
@@ -301,9 +302,7 @@ describe('GenerationService', () => {
         buffer: Buffer.from('img'),
         mimeType: 'image/png',
       });
-      mockStorageService.buildKey.mockReturnValue(
-        'illustrations/book-1/1.png',
-      );
+      mockStorageService.buildKey.mockReturnValue('illustrations/book-1/1.png');
       mockStorageService.uploadFile.mockResolvedValue(undefined);
       mockPrismaService.illustration.create.mockResolvedValue({ id: 'ill-1' });
       mockPdfService.generateBookPdf.mockResolvedValue('books/book-1/book.pdf');

@@ -1257,7 +1257,9 @@ h1 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .login-page {
@@ -1305,7 +1307,9 @@ h1 {
   min-height: 48px;
   padding: 0 24px;
   width: 100%;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .login-google-btn:hover {

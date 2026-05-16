@@ -62,7 +62,10 @@ export class BooksController {
 
     for (const ill of book.illustrations) {
       if (ill.objectKey) {
-        urls[ill.id] = await this.storage.getSignedDownloadUrl(ill.objectKey, 86400);
+        urls[ill.id] = await this.storage.getSignedDownloadUrl(
+          ill.objectKey,
+          86400,
+        );
       }
     }
 

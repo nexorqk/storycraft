@@ -1,12 +1,14 @@
 export const pdf = jest.fn(() => ({
   toBuffer: jest.fn(() => Promise.resolve(Buffer.from('mock-pdf'))),
-  toStream: jest.fn(() => Promise.resolve({
-    on: jest.fn((event: string, callback: () => void) => {
-      if (event === 'end') {
-        callback();
-      }
+  toStream: jest.fn(() =>
+    Promise.resolve({
+      on: jest.fn((event: string, callback: () => void) => {
+        if (event === 'end') {
+          callback();
+        }
+      }),
     }),
-  })),
+  ),
   updateContainer: jest.fn(),
 }));
 

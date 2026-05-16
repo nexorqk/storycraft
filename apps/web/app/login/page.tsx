@@ -1,53 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
-import { fetchCurrentUser, getGoogleAuthUrl, type PublicUser } from '../../lib/auth-api';
+import { getGoogleAuthUrl } from '../../lib/auth-api';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<PublicUser | null>(null);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchCurrentUser(controller.signal)
-      .then((result) => {
-        if (result.user) {
-          setUser(result.user);
-          setTimeout(() => router.replace('/'), 300);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setChecking(false));
-
-    return () => controller.abort();
-  }, [router]);
-
-  if (checking) {
-    return (
-      <div className="auth-callback">
-        <div className="auth-callback-card">
-          <div className="auth-callback-spinner" />
-          <h2>Loading</h2>
-        </div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return (
-      <div className="auth-callback">
-        <div className="auth-callback-card">
-          <h2>Already signed in</h2>
-          <p>Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="login-page">
       <div className="login-card">

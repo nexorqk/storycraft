@@ -21,9 +21,7 @@ import type { StoryProvider } from './types';
       inject: [ConfigService],
       useFactory: (config: ConfigService): StoryProvider => {
         const useMock = config.get<string>('USE_MOCK_AI') === 'true';
-        return useMock
-          ? new MockStoryProvider()
-          : new OpenAiProvider(config);
+        return useMock ? new MockStoryProvider() : new OpenAiProvider(config);
       },
     },
     {

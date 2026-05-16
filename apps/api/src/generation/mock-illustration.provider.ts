@@ -27,7 +27,7 @@ export class MockIllustrationProvider implements IllustrationProvider {
     const headerSize = 8;
     const chunkSize = (name: string, dataLength: number) => 12 + dataLength + 4;
     const ihdrDataLength = 13;
-    const idatDataLength = width * height * 3 + (height * Math.ceil(width / 8));
+    const idatDataLength = width * height * 3 + height * Math.ceil(width / 8);
 
     const totalSize =
       headerSize +
@@ -42,11 +42,7 @@ export class MockIllustrationProvider implements IllustrationProvider {
     buffer.writeUInt32BE(0x0d0a1a0a, 4);
     offset = 8;
 
-    const writeChunk = (
-      name: string,
-      data: Buffer,
-      pos: number,
-    ): number => {
+    const writeChunk = (name: string, data: Buffer, pos: number): number => {
       const nameBuf = Buffer.from(name, 'ascii');
       const dataLength = data.length;
 

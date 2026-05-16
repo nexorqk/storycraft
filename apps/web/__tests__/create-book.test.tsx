@@ -37,7 +37,9 @@ vi.mock('../lib/templates-api', () => ({
 
 vi.mock('next/link', () => ({
   default: ({ children, ...props }: Record<string, unknown>) =>
-    `<a data-mocked-link ${Object.entries(props).map(([k, v]) => `${k}="${v}"`).join(' ')}>${children}</a>`,
+    `<a data-mocked-link ${Object.entries(props)
+      .map(([k, v]) => `${k}="${v}"`)
+      .join(' ')}>${children}</a>`,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -79,12 +81,22 @@ const sampleTemplates = [
     pageCount: 8,
     isActive: true,
     pages: [
-      { pageNumber: 1, textPrompt: 'Once upon a time', illustrationPrompt: 'A forest' },
+      {
+        pageNumber: 1,
+        textPrompt: 'Once upon a time',
+        illustrationPrompt: 'A forest',
+      },
     ],
   },
 ];
 
-const sampleUsage = { used: 0, limit: 3, remaining: 3, periodStart: '2025-04-01', periodEnd: '2025-05-01' };
+const sampleUsage = {
+  used: 0,
+  limit: 3,
+  remaining: 3,
+  periodStart: '2025-04-01',
+  periodEnd: '2025-05-01',
+};
 
 describe('CreateBookPage', () => {
   beforeEach(() => {
@@ -99,7 +111,9 @@ describe('CreateBookPage', () => {
       values: vi.fn(() => []),
       toString: vi.fn(() => ''),
       [Symbol.iterator]: vi.fn(() => []),
-    } as unknown as ReturnType<typeof import('next/navigation').useSearchParams>);
+    } as unknown as ReturnType<
+      typeof import('next/navigation').useSearchParams
+    >);
     mockListChildren.mockResolvedValue({ children: sampleChildren });
     mockListTemplates.mockResolvedValue(sampleTemplates);
     mockGetBooksUsage.mockResolvedValue({ usage: sampleUsage });
@@ -107,7 +121,7 @@ describe('CreateBookPage', () => {
 
   it('renders child selection, template selection, and customization form', async () => {
     render(<CreateBookPage />);
-    await screen.findByText('1. Choose a child');
+    await screen.findByText('Masha');
     expect(screen.getByText('2. Choose a template')).toBeInTheDocument();
     expect(screen.getByText('3. Customize')).toBeInTheDocument();
     expect(screen.getByText('Masha')).toBeInTheDocument();
@@ -144,7 +158,9 @@ describe('CreateBookPage', () => {
     });
     await user.click(templateButton);
 
-    const reviewButton = screen.getByRole('button', { name: /review & create/i });
+    const reviewButton = screen.getByRole('button', {
+      name: /review & create/i,
+    });
     expect(reviewButton).toBeEnabled();
   });
 

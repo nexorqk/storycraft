@@ -34,12 +34,7 @@
     "eslint/require-unicode-regexp": "off",
     "eslint/max-lines": "off",
     "eslint/no-loop-func": "off",
-    "unicorn/consistent-function-scoping": "off",
+    "unicorn/consistent-function-scoping": "off"
   },
-  "ignorePatterns": [
-    "node_modules",
-    ".next",
-    "dist",
-    "coverage"
-  ]
+  "ignorePatterns": ["node_modules", ".next", "dist", "coverage"]
 }

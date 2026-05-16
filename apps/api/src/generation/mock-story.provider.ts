@@ -38,7 +38,10 @@ export class MockStoryProvider implements StoryProvider {
       10: 'засыпает с улыбкой, мечтая о новых приключениях.',
     };
 
-    return stories[pageNumber] || `отправляется в увлекательное путешествие на странице ${pageNumber}.`;
+    return (
+      stories[pageNumber] ||
+      `отправляется в увлекательное путешествие на странице ${pageNumber}.`
+    );
   }
 
   private generateMockIllustrationPrompt(request: StoryPageRequest): string {

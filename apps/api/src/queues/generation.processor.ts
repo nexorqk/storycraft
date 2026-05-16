@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import type { Prisma } from '@prisma/client';
 
+import { ContentPolicyError, ProviderAuthError } from '../generation/errors';
 import { GenerationService } from '../generation/generation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GENERATION_QUEUE } from './generation-queue.constants';
@@ -107,24 +108,30 @@ export class GenerationProcessor extends WorkerHost {
 
       this.logger.log(`Generation job ${job.id} completed for book ${bookId}`);
     } catch (error) {
+      const isNonRetryable =
+        error instanceof ContentPolicyError ||
+        error instanceof ProviderAuthError;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       this.logger.error(
-        `Generation job ${job.id} failed for book ${bookId}`,
-        error,
+        `Generation job ${job.id} failed for book ${bookId}${isNonRetryable ? ' (non-retryable)' : ''}`,
+        error instanceof Error ? error.stack : undefined,
       );
 
       await job.updateData({
         ...job.data,
         status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       });
       await this.updatePersistentJob(persistentJobId, {
         status: 'FAILED',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorMessage,
         completedAt: new Date(),
         result: {
           status: 'failed',
           progress: typeof job.progress === 'number' ? job.progress : 0,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
         },
       });
 

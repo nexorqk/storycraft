@@ -6,16 +6,20 @@ const CSRF_HEADER_NAME = 'x-csrf-token';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-const CSRF_SKIP_PATHS = new Set([
-  '/api/auth/logout',
-]);
+const CSRF_SKIP_PATHS = new Set(['/api/auth/logout']);
 
 function generateToken(): string {
   return randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
 }
 
-export function csrfMiddleware(request: Request, response: Response, next: () => void) {
-  const existingToken = request.cookies?.[CSRF_COOKIE_NAME] as string | undefined;
+export function csrfMiddleware(
+  request: Request,
+  response: Response,
+  next: () => void,
+) {
+  const existingToken = request.cookies?.[CSRF_COOKIE_NAME] as
+    | string
+    | undefined;
 
   if (SAFE_METHODS.has(request.method.toUpperCase())) {
     if (existingToken) {

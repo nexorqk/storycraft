@@ -12,7 +12,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@storycraft/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
+      '@storycraft/shared': resolve(
+        __dirname,
+        '../../packages/shared/src/index.ts',
+      ),
     },
   },
 });

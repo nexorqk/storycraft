@@ -41,17 +41,29 @@ export function getGoogleAuthUrl() {
 }
 
 export async function fetchCurrentUser(signal?: AbortSignal) {
-  const response = await fetch(`${API_URL}/auth/me`, {
-    credentials: 'include',
-    cache: 'no-store',
-    signal,
-  });
+  const controller = new AbortController();
 
-  if (!response.ok) {
-    throw new Error(`Auth check failed with ${response.status}`);
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  const effectiveSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+
+  try {
+    const response = await fetch(`${API_URL}/auth/me`, {
+      credentials: 'include',
+      cache: 'no-store',
+      signal: effectiveSignal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Auth check failed with ${response.status}`);
+    }
+
+    return (await response.json()) as AuthMeResponse;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return (await response.json()) as AuthMeResponse;
 }
 
 export async function logoutCurrentUser() {

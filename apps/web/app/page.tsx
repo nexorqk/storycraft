@@ -1,11 +1,9 @@
-'use client';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
-import { fetchCurrentUser, type PublicUser } from '../lib/auth-api';
 import { AppShell } from './components/app-shell';
 import { AuthPanel } from './components/auth-panel';
+import { API_URL } from '../lib/auth-api';
 
 const sections = [
   {
@@ -25,43 +23,38 @@ const sections = [
   },
 ];
 
-export default function HomePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<PublicUser | null>(null);
-  const [loading, setLoading] = useState(true);
+async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('storycraft_session');
 
-  useEffect(() => {
-    const controller = new AbortController();
+    if (!sessionCookie) {
+      return null;
+    }
 
-    fetchCurrentUser(controller.signal)
-      .then((result) => {
-        if (result.user) {
-          setUser(result.user);
-        } else {
-          router.replace('/login');
-        }
-      })
-      .catch(() => {
-        router.replace('/login');
-      })
-      .finally(() => setLoading(false));
+    const response = await fetch(`${API_URL}/auth/me`, {
+      headers: {
+        Cookie: `storycraft_session=${sessionCookie.value}`,
+      },
+      cache: 'no-store',
+    });
 
-    return () => controller.abort();
-  }, [router]);
+    if (!response.ok) {
+      return null;
+    }
 
-  if (loading) {
-    return (
-      <div className="auth-callback">
-        <div className="auth-callback-card">
-          <div className="auth-callback-spinner" />
-          <h2>Loading</h2>
-        </div>
-      </div>
-    );
+    const data = await response.json();
+    return data.user;
+  } catch {
+    return null;
   }
+}
+
+export default async function HomePage() {
+  const user = await getCurrentUser();
 
   if (!user) {
-    return null;
+    redirect('/login');
   }
 
   return (

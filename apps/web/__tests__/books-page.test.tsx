@@ -22,7 +22,9 @@ vi.mock('../lib/books-api', () => ({
 
 vi.mock('next/link', () => ({
   default: ({ children, ...props }: Record<string, unknown>) =>
-    `<a data-mocked-link ${Object.entries(props).map(([k, v]) => `${k}="${v}"`).join(' ')}>${children}</a>`,
+    `<a data-mocked-link ${Object.entries(props)
+      .map(([k, v]) => `${k}="${v}"`)
+      .join(' ')}>${children}</a>`,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -85,7 +87,13 @@ const sampleBooks = [
   },
 ];
 
-const sampleUsage = { used: 1, limit: 3, remaining: 2, periodStart: '2025-04-01', periodEnd: '2025-05-01' };
+const sampleUsage = {
+  used: 1,
+  limit: 3,
+  remaining: 2,
+  periodStart: '2025-04-01',
+  periodEnd: '2025-05-01',
+};
 
 describe('BooksPage', () => {
   beforeEach(() => {
@@ -152,7 +160,11 @@ describe('BooksPage', () => {
     mockGetBooksUsage.mockResolvedValue({ usage: sampleUsage });
     render(<BooksPage />);
     await screen.findByText('Adventure Story');
-    expect(screen.getAllByText('Child: Masha').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Template: Adventure').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Child: Masha').length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      screen.getAllByText('Template: Adventure').length,
+    ).toBeGreaterThanOrEqual(1);
   });
 });

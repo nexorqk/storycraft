@@ -140,7 +140,9 @@ describe('ChildrenManager', () => {
     await user.click(editButtons[0]!);
 
     expect(screen.getByText('Edit profile')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /save changes/i }),
+    ).toBeInTheDocument();
 
     const nameInput = screen.getByLabelText('Name');
     await user.clear(nameInput);

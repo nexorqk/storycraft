@@ -142,10 +142,7 @@ export async function deleteAdminTemplatePage(
   );
 }
 
-export async function uploadTemplateCover(
-  templateId: string,
-  file: File,
-) {
+export async function uploadTemplateCover(templateId: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
 

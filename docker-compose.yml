@@ -21,7 +21,12 @@ services:
       PGPASSWORD: storycraft
     volumes:
       - ./infra/backups:/backups
-    entrypoint: ['sh', '-c', 'while true; do pg_dump -h postgres -U storycraft -d storycraft -F c -f /backups/storycraft_$(date +%Y%m%d_%H%M%S).dump; sleep 86400; done']
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        'while true; do pg_dump -h postgres -U storycraft -d storycraft -F c -f /backups/storycraft_$(date +%Y%m%d_%H%M%S).dump; sleep 86400; done',
+      ]
     depends_on:
       postgres:
         condition: service_healthy

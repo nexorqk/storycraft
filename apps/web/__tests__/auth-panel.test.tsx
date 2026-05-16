@@ -5,10 +5,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthPanel } from '../app/components/auth-panel';
 import * as authApi from '../lib/auth-api';
 
+const mockRouterPush = vi.fn();
+
 vi.mock('../lib/auth-api', () => ({
   fetchCurrentUser: vi.fn(),
   getGoogleAuthUrl: vi.fn(() => '/api/auth/google'),
   logoutCurrentUser: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
 }));
 
 const mockFetchCurrentUser = vi.mocked(authApi.fetchCurrentUser);
@@ -17,13 +25,16 @@ const mockLogoutCurrentUser = vi.mocked(authApi.logoutCurrentUser);
 describe('AuthPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRouterPush.mockClear();
   });
 
   it('shows loading state on mount', () => {
     mockFetchCurrentUser.mockReturnValue(new Promise(() => {}));
     render(<AuthPanel />);
     expect(screen.getByText('Checking sign-in')).toBeInTheDocument();
-    expect(screen.getByText('Checking sign-in').closest('section')!).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByText('Checking sign-in').closest('section')!,
+    ).toHaveAttribute('aria-busy', 'true');
   });
 
   it('shows signed-out state when user is null', async () => {
@@ -79,9 +90,7 @@ describe('AuthPanel', () => {
     mockFetchCurrentUser.mockRejectedValue(new Error('Network error'));
     render(<AuthPanel />);
     await screen.findByText('API unavailable');
-    expect(
-      screen.getByRole('button', { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /continue with google/i }),
     ).toBeInTheDocument();
@@ -107,6 +116,6 @@ describe('AuthPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /sign out/i }));
     expect(mockLogoutCurrentUser).toHaveBeenCalledOnce();
-    await screen.findByText('Signed out');
+    expect(mockRouterPush).toHaveBeenCalledWith('/login');
   });
 });

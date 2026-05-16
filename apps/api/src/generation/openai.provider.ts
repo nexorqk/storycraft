@@ -2,19 +2,39 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
+import { withRetry, withTimeout, isContentPolicyError } from '../common/retry';
+import {
+  ContentPolicyError,
+  ProviderAuthError,
+  ProviderRateLimitError,
+  ProviderServerError,
+  ProviderTimeoutError,
+} from './errors';
 import type { StoryPageRequest, StoryPageResult, StoryProvider } from './types';
+
+// Approximate costs per 1M tokens (USD) — update as pricing changes
+const COST_PER_1M_INPUT_TOKENS = 0.15;
+const COST_PER_1M_OUTPUT_TOKENS = 0.6;
 
 @Injectable()
 export class OpenAiProvider implements StoryProvider {
   private readonly client: OpenAI;
   private readonly model: string;
   private readonly logger = new Logger(OpenAiProvider.name);
+  private readonly maxRetries: number;
+  private readonly timeoutMs: number;
 
   constructor(private readonly config: ConfigService) {
     this.client = new OpenAI({
       apiKey: this.config.getOrThrow<string>('OPENAI_API_KEY'),
     });
     this.model = this.config.get('OPENAI_MODEL') ?? 'gpt-4o-mini';
+    this.maxRetries = this.config.get('OPENAI_MAX_RETRIES')
+      ? parseInt(this.config.get('OPENAI_MAX_RETRIES')!, 10)
+      : 3;
+    this.timeoutMs = this.config.get('OPENAI_TIMEOUT_MS')
+      ? parseInt(this.config.get('OPENAI_TIMEOUT_MS')!, 10)
+      : 30000;
   }
 
   async generatePage(request: StoryPageRequest): Promise<StoryPageResult> {
@@ -25,23 +45,124 @@ export class OpenAiProvider implements StoryProvider {
       `Generating page ${request.pageNumber} for child "${request.childName}" using ${this.model}`,
     );
 
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.8,
-      max_tokens: 500,
-    });
+    try {
+      const response = await withRetry(
+        () =>
+          withTimeout(
+            this.client.chat.completions.create({
+              model: this.model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              temperature: 0.8,
+              max_tokens: 500,
+            }),
+            this.timeoutMs,
+            `OpenAI chat completion (page ${request.pageNumber})`,
+          ),
+        {
+          maxRetries: this.maxRetries,
+          baseDelayMs: 1000,
+          maxDelayMs: 30000,
+          onRetry: (error, attempt, delayMs) => {
+            this.logger.warn(
+              `OpenAI retry ${attempt}/${this.maxRetries} for page ${request.pageNumber} after ${delayMs}ms: ${error.message}`,
+            );
+          },
+          shouldRetry: (error) => this.isRetryable(error),
+        },
+      );
 
-    const content = response.choices[0]?.message?.content?.trim();
+      const content = response.choices[0]?.message?.content?.trim();
 
-    if (!content) {
-      throw new Error('OpenAI returned empty response');
+      if (!content) {
+        throw new Error('OpenAI returned empty response');
+      }
+
+      const usage = response.usage;
+      if (usage) {
+        const inputCost =
+          ((usage.prompt_tokens ?? 0) / 1_000_000) * COST_PER_1M_INPUT_TOKENS;
+        const outputCost =
+          ((usage.completion_tokens ?? 0) / 1_000_000) *
+          COST_PER_1M_OUTPUT_TOKENS;
+        const totalCost = inputCost + outputCost;
+
+        this.logger.log(
+          `OpenAI cost for page ${request.pageNumber}: $${totalCost.toFixed(6)} (${usage.prompt_tokens ?? 0} input + ${usage.completion_tokens ?? 0} output tokens)`,
+        );
+      }
+
+      return this.parseResponse(content, request);
+    } catch (error) {
+      throw this.transformError(error);
+    }
+  }
+
+  private isRetryable(error: Error): boolean {
+    const message = error.message.toLowerCase();
+
+    if (isContentPolicyError(error)) {
+      return false;
     }
 
-    return this.parseResponse(content, request);
+    if (
+      message.includes('401') ||
+      message.includes('unauthorized') ||
+      message.includes('invalid api key')
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private transformError(error: unknown): Error {
+    if (!(error instanceof Error)) {
+      return new Error(String(error));
+    }
+
+    const message = error.message.toLowerCase();
+
+    if (isContentPolicyError(error)) {
+      return new ContentPolicyError(
+        `OpenAI content policy violation: ${error.message}`,
+      );
+    }
+
+    if (
+      message.includes('401') ||
+      message.includes('unauthorized') ||
+      message.includes('invalid api key')
+    ) {
+      return new ProviderAuthError(
+        `OpenAI authentication failed: ${error.message}`,
+      );
+    }
+
+    if (message.includes('429') || message.includes('rate limit')) {
+      return new ProviderRateLimitError(`OpenAI rate limit: ${error.message}`);
+    }
+
+    if (
+      message.includes('timeout') ||
+      message.includes('timed out') ||
+      message.includes('etimedout')
+    ) {
+      return new ProviderTimeoutError(`OpenAI timeout: ${error.message}`);
+    }
+
+    if (
+      message.includes('500') ||
+      message.includes('502') ||
+      message.includes('503') ||
+      message.includes('504')
+    ) {
+      return new ProviderServerError(`OpenAI server error: ${error.message}`);
+    }
+
+    return error;
   }
 
   private buildSystemPrompt(request: StoryPageRequest): string {
@@ -70,7 +191,8 @@ export class OpenAiProvider implements StoryProvider {
 
   private coverStyleLabel(style: string): string {
     const labels: Record<string, string> = {
-      watercolor: 'Soft watercolor illustration style, gentle colors, hand-painted feel',
+      watercolor:
+        'Soft watercolor illustration style, gentle colors, hand-painted feel',
       cartoon: 'Bright cartoon illustration style, bold outlines, vivid colors',
       realistic: 'Realistic illustration style, detailed, natural lighting',
     };

@@ -148,7 +148,9 @@ export class AdminTemplatesService {
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Only JPEG, PNG, and WebP images are allowed');
+      throw new BadRequestException(
+        'Only JPEG, PNG, and WebP images are allowed',
+      );
     }
 
     const maxSize = 5 * 1024 * 1024;
@@ -156,8 +158,16 @@ export class AdminTemplatesService {
       throw new BadRequestException('File size must be less than 5MB');
     }
 
-    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
-    const objectKey = this.storage.buildKey('template-covers', `${templateId}.${ext}`);
+    const ext =
+      file.mimetype === 'image/png'
+        ? 'png'
+        : file.mimetype === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+    const objectKey = this.storage.buildKey(
+      'template-covers',
+      `${templateId}.${ext}`,
+    );
 
     await this.storage.uploadFile(objectKey, file.buffer, file.mimetype);
 
@@ -183,7 +193,10 @@ export class AdminTemplatesService {
       return { url: null };
     }
 
-    const url = await this.storage.getSignedDownloadUrl(template.coverImageKey, 86400);
+    const url = await this.storage.getSignedDownloadUrl(
+      template.coverImageKey,
+      86400,
+    );
     return { url };
   }
 

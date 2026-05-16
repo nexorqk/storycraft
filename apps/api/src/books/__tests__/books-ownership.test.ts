@@ -266,9 +266,9 @@ describe('Books ownership boundaries', () => {
     it('rejects progress check for a book owned by another user', async () => {
       prisma.book.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.getBookProgress(userB, bookA),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getBookProgress(userB, bookA)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

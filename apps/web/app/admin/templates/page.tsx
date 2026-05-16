@@ -43,7 +43,9 @@ export default function AdminTemplatesPage() {
         setTemplates(data.templates);
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load templates');
+        setError(
+          err instanceof Error ? err.message : 'Failed to load templates',
+        );
       })
       .finally(() => setLoading(false));
   }, []);
@@ -57,7 +59,9 @@ export default function AdminTemplatesPage() {
       await deleteAdminTemplate(templateId);
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete template');
+      setError(
+        err instanceof Error ? err.message : 'Failed to delete template',
+      );
     }
   };
 
@@ -74,7 +78,9 @@ export default function AdminTemplatesPage() {
         ),
       );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update template');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update template',
+      );
     }
   };
 
@@ -254,7 +260,9 @@ function TemplateForm({
         });
       })
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load template'),
+        setError(
+          err instanceof Error ? err.message : 'Failed to load template',
+        ),
       )
       .finally(() => setLoading(false));
   }, [templateId]);
@@ -341,7 +349,9 @@ function TemplateForm({
               type="text"
               required
               value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
               placeholder="e.g. Приключение о доброте"
             />
           </div>
@@ -466,12 +476,12 @@ function TemplateForm({
           </div>
 
           <div className="card-actions">
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : isEdit ? 'Update Template' : 'Create Template'}
+            <button className="primary-button" type="submit" disabled={saving}>
+              {saving
+                ? 'Saving...'
+                : isEdit
+                  ? 'Update Template'
+                  : 'Create Template'}
             </button>
             <button
               className="secondary-button"
@@ -512,7 +522,9 @@ function TemplateDetail({
     getAdminTemplate(templateId)
       .then((data) => setTemplate(data.template))
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load template'),
+        setError(
+          err instanceof Error ? err.message : 'Failed to load template',
+        ),
       )
       .finally(() => setLoading(false));
 
@@ -536,22 +548,27 @@ function TemplateDetail({
             }
           : prev,
       );
-      setNewPage({ pageNumber: (template?.pages.length ?? 0) + 1, textPrompt: '', illustrationPrompt: '' });
+      setNewPage({
+        pageNumber: (template?.pages.length ?? 0) + 1,
+        textPrompt: '',
+        illustrationPrompt: '',
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to add page');
     }
   };
 
-  const handleUpdatePage = async (pageId: string, dto: { textPrompt?: string; illustrationPrompt?: string }) => {
+  const handleUpdatePage = async (
+    pageId: string,
+    dto: { textPrompt?: string; illustrationPrompt?: string },
+  ) => {
     try {
       const result = await updateAdminTemplatePage(templateId, pageId, dto);
       setTemplate((prev) =>
         prev
           ? {
               ...prev,
-              pages: prev.pages.map((p) =>
-                p.id === pageId ? result.page : p,
-              ),
+              pages: prev.pages.map((p) => (p.id === pageId ? result.page : p)),
             }
           : prev,
       );
@@ -625,15 +642,10 @@ function TemplateDetail({
           </p>
         </div>
         <div className="card-actions">
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={onBack}
-          >
+          <button className="secondary-button" type="button" onClick={onBack}>
             Back to List
           </button>
-          <a href={`/admin/templates`} className="secondary-button">
-          </a>
+          <a href={`/admin/templates`} className="secondary-button"></a>
         </div>
       </header>
 
@@ -660,9 +672,7 @@ function TemplateDetail({
           </div>
           <div>
             <dt>Illustration Style</dt>
-            <dd className="admin-prompt">
-              {template.illustrationStylePrompt}
-            </dd>
+            <dd className="admin-prompt">{template.illustrationStylePrompt}</dd>
           </div>
         </dl>
       </div>
@@ -687,7 +697,11 @@ function TemplateDetail({
               disabled={uploadingCover}
               hidden
             />
-            {uploadingCover ? 'Uploading...' : coverUrl ? 'Change Cover' : 'Upload Cover'}
+            {uploadingCover
+              ? 'Uploading...'
+              : coverUrl
+                ? 'Change Cover'
+                : 'Upload Cover'}
           </label>
           <p className="cover-note">JPEG, PNG, or WebP. Max 5MB.</p>
         </div>
