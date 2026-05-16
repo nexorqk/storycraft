@@ -43,6 +43,7 @@ The repository is a pnpm monorepo:
 - Check formatting: `pnpm format:check`.
 - Format files: `pnpm format`.
 - Apply production migrations: `pnpm db:migrate:deploy`.
+- Run staging smoke checks: `pnpm smoke:staging`.
 
 Database commands:
 

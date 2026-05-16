@@ -13,6 +13,14 @@ pnpm test
 pnpm build
 ```
 
+After deploying to staging, run:
+
+```bash
+STAGING_API_URL=https://api.staging.example.com \
+STAGING_WEB_URL=https://staging.example.com \
+pnpm smoke:staging
+```
+
 Apply database migrations with:
 
 ```bash

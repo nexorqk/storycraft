@@ -16,10 +16,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "pnpm typecheck",
     "test": "echo \"No database package tests configured yet\"",
-    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
-    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
-    "prisma:studio": "prisma studio --schema prisma/schema.prisma",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
@@ -28,8 +28,5 @@
   "devDependencies": {
     "prisma": "^6.0.0",
     "tsx": "^4.19.0"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }

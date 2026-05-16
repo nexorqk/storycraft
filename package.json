@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "npx oxlint --config .oxlintrc.json apps/api/src apps/web/app apps/web/lib packages/shared/src",
     "lint:workspaces": "pnpm -r --if-present lint",
+    "smoke:staging": "node scripts/staging-smoke.mjs",
     "test": "pnpm -r --if-present test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

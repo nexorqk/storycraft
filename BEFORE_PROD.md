@@ -17,8 +17,9 @@ or legal review.
 | Expensive operation guardrails | Done: generation kill switch, active generation limit, daily generation job limit, estimated book cost cap.                     |
 | Safety gate                    | Done: local safety checks on user inputs and generated story/illustration prompts, plus provider content-policy error handling. |
 | Account data rights            | Done: authenticated account export endpoint, account deletion endpoint, Settings UI, server-side session revocation.            |
-| Migration command              | Done: `pnpm db:migrate:deploy` uses `prisma migrate deploy`.                                                                    |
+| Migration command              | Done: `pnpm db:migrate:deploy` uses `prisma migrate deploy`; Prisma config lives in `packages/db/prisma.config.ts`.             |
 | CI                             | Done: GitHub Actions runs install, Prisma generate, format, typecheck, tests, and build.                                        |
+| Staging smoke check            | Done: `pnpm smoke:staging` checks API liveness/readiness, public templates, anonymous auth rejection, and web root.             |
 | Formatting/tests               | Done: `pnpm format:check`, `pnpm typecheck`, `pnpm test`, and `pnpm build` are expected release gates.                          |
 
 ## Required Outside Repo
@@ -45,6 +46,14 @@ pnpm format:check
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+After staging deploy:
+
+```bash
+STAGING_API_URL=https://api.staging.example.com \
+STAGING_WEB_URL=https://staging.example.com \
+pnpm smoke:staging
 ```
 
 For production database migration:
