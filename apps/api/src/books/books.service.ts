@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import type { Book, BookStatus } from '@prisma/client';
 import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
@@ -11,6 +13,7 @@ import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 import { JobsService } from '../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../queues/generation-queue.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { SafetyService } from '../safety/safety.service';
 import { StorageService } from '../storage/storage.service';
 import type { CreateBookDto } from './dto/create-book.dto';
 
@@ -65,6 +68,8 @@ export class BooksService {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
     private readonly storage: StorageService,
+    private readonly config: ConfigService,
+    private readonly safety: SafetyService,
     @InjectQueue(GENERATION_QUEUE)
     private readonly generationQueue: Queue,
   ) {}
@@ -136,11 +141,28 @@ export class BooksService {
 
     const template = await this.prisma.template.findFirst({
       where: { id: dto.templateId, isActive: true },
+      include: {
+        _count: {
+          select: { pages: true },
+        },
+      },
     });
 
     if (!template) {
       throw new NotFoundException('Template not found or inactive');
     }
+
+    this.safety.assertUserInputAllowed([
+      { label: 'Child name', value: child.name },
+      { label: 'Child interests', value: child.interests },
+      { label: 'Book title', value: dto.title },
+      { label: 'Child name in story', value: dto.childNameInStory },
+    ]);
+
+    await this.enforceGenerationStartGuardrails(
+      userId,
+      template._count?.pages || template.pageCount,
+    );
 
     const usagePeriod = this.getCurrentFreeGenerationPeriod();
     const { book, persistentJob } = await this.prisma.$transaction(
@@ -227,9 +249,11 @@ export class BooksService {
   async triggerGeneration(userId: string, bookId: string) {
     const book = await this.findOwnedBook(userId, bookId);
 
-    if (book.status === 'PROCESSING') {
+    if (book.status === 'PENDING' || book.status === 'PROCESSING') {
       throw new BadRequestException('Book is already being generated');
     }
+
+    await this.enforceGenerationStartGuardrails(userId, 1);
 
     const persistentJob = await this.prisma.$transaction(async (tx) => {
       await tx.book.update({
@@ -457,6 +481,99 @@ export class BooksService {
     }
 
     return book;
+  }
+
+  private async enforceGenerationStartGuardrails(
+    userId: string,
+    pageCount: number,
+  ) {
+    this.ensureGenerationEnabled();
+    this.enforceEstimatedCostLimit(pageCount);
+    await Promise.all([
+      this.enforceActiveGenerationLimit(userId),
+      this.enforceDailyGenerationJobLimit(userId),
+    ]);
+  }
+
+  private ensureGenerationEnabled() {
+    const enabled = this.config.get<boolean>('GENERATION_ENABLED') ?? true;
+
+    if (!enabled) {
+      throw new ServiceUnavailableException(
+        'Book generation is temporarily disabled',
+      );
+    }
+  }
+
+  private enforceEstimatedCostLimit(pageCount: number) {
+    const maxEstimatedCost =
+      this.config.get<number>('AI_MAX_ESTIMATED_BOOK_COST_USD') ?? 1;
+
+    if (maxEstimatedCost <= 0) {
+      return;
+    }
+
+    const textPageCost =
+      this.config.get<number>('AI_ESTIMATED_TEXT_PAGE_COST_USD') ?? 0.002;
+    const imagePageCost =
+      this.config.get<number>('AI_ESTIMATED_IMAGE_COST_USD') ?? 0.04;
+    const estimatedCost =
+      Math.max(1, pageCount) * (textPageCost + imagePageCost);
+
+    if (estimatedCost > maxEstimatedCost) {
+      throw new BadRequestException(
+        `Estimated generation cost $${estimatedCost.toFixed(2)} exceeds the configured limit.`,
+      );
+    }
+  }
+
+  private async enforceActiveGenerationLimit(userId: string) {
+    const maxActive =
+      this.config.get<number>('GENERATION_MAX_ACTIVE_JOBS_PER_USER') ?? 1;
+
+    if (maxActive <= 0) {
+      return;
+    }
+
+    const activeCount = await this.prisma.book.count({
+      where: {
+        userId,
+        status: { in: ['PENDING', 'PROCESSING'] },
+      },
+    });
+
+    if (activeCount >= maxActive) {
+      throw new BadRequestException(
+        'You already have a book generation in progress',
+      );
+    }
+  }
+
+  private async enforceDailyGenerationJobLimit(userId: string) {
+    const dailyLimit =
+      this.config.get<number>('GENERATION_DAILY_JOB_LIMIT_PER_USER') ?? 10;
+
+    if (dailyLimit <= 0) {
+      return;
+    }
+
+    const now = new Date();
+    const dayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const dailyJobs = await this.prisma.job.count({
+      where: {
+        userId,
+        type: 'GENERATE_BOOK',
+        queuedAt: { gte: dayStart },
+      },
+    });
+
+    if (dailyJobs >= dailyLimit) {
+      throw new BadRequestException(
+        'Daily generation job limit reached. Try again tomorrow.',
+      );
+    }
   }
 
   private getCurrentFreeGenerationPeriod(now = new Date()) {

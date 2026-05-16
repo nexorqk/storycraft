@@ -4,6 +4,7 @@ import { GenerationService } from '../generation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
 import { PdfService } from '../../pdf/pdf.service';
+import { SafetyService } from '../../safety/safety.service';
 import type { StoryProvider } from '../types';
 import type { IllustrationProvider } from '../illustration-types';
 
@@ -44,6 +45,10 @@ const mockStorageService = {
 
 const mockPdfService = {
   generateBookPdf: jest.fn(),
+};
+
+const mockSafetyService = {
+  assertGeneratedContentAllowed: jest.fn(),
 };
 
 const mockBook = {
@@ -88,6 +93,7 @@ describe('GenerationService', () => {
         },
         { provide: StorageService, useValue: mockStorageService },
         { provide: PdfService, useValue: mockPdfService },
+        { provide: SafetyService, useValue: mockSafetyService },
       ],
     }).compile();
 

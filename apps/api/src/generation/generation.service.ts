@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { PdfService } from '../pdf/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SafetyService } from '../safety/safety.service';
 import { StorageService } from '../storage/storage.service';
 import type { IllustrationProvider } from './illustration-types';
 import type { StoryPageRequest, StoryPageResult, StoryProvider } from './types';
@@ -20,6 +21,7 @@ export class GenerationService {
     private readonly illustrationProvider: IllustrationProvider,
     private readonly storage: StorageService,
     private readonly pdf: PdfService,
+    private readonly safety: SafetyService,
   ) {}
 
   async generateBook(
@@ -71,6 +73,14 @@ export class GenerationService {
         );
 
         const storyResult = await this.storyProvider.generatePage(request);
+        this.safety.assertGeneratedContentAllowed(
+          storyResult.text,
+          `Generated story page ${templatePage.pageNumber}`,
+        );
+        this.safety.assertGeneratedContentAllowed(
+          storyResult.illustrationPrompt,
+          `Generated illustration prompt ${templatePage.pageNumber}`,
+        );
         generatedPages.push(storyResult);
 
         const bookPage = await this.prisma.bookPage.create({

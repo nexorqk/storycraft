@@ -86,6 +86,26 @@ const envSchema = z
     DALLE_QUALITY: z.enum(['standard', 'hd']).default('standard'),
     DALLE_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
     DALLE_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
+    GENERATION_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    GENERATION_MAX_ACTIVE_JOBS_PER_USER: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(1),
+    GENERATION_DAILY_JOB_LIMIT_PER_USER: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(10),
+    AI_ESTIMATED_TEXT_PAGE_COST_USD: z.coerce
+      .number()
+      .nonnegative()
+      .default(0.002),
+    AI_ESTIMATED_IMAGE_COST_USD: z.coerce.number().nonnegative().default(0.04),
+    AI_MAX_ESTIMATED_BOOK_COST_USD: z.coerce.number().nonnegative().default(1),
     RATE_LIMIT_SHORT_TTL_SECONDS: z.coerce
       .number()
       .int()

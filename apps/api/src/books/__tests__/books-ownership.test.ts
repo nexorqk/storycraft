@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 
@@ -6,6 +7,7 @@ import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
+import { SafetyService } from '../../safety/safety.service';
 import { StorageService } from '../../storage/storage.service';
 
 const userA = 'user-a';
@@ -29,6 +31,7 @@ function makePrismaMock() {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -39,6 +42,7 @@ function makePrismaMock() {
     job: {
       create: jest.fn(),
       findFirst: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
     },
     template: { findFirst: jest.fn() },
@@ -59,6 +63,23 @@ const mockJobsService = {
 
 const mockStorageService = {
   deleteFiles: jest.fn(),
+};
+
+const configDefaults: Record<string, unknown> = {
+  GENERATION_ENABLED: true,
+  GENERATION_MAX_ACTIVE_JOBS_PER_USER: 1,
+  GENERATION_DAILY_JOB_LIMIT_PER_USER: 10,
+  AI_ESTIMATED_TEXT_PAGE_COST_USD: 0.002,
+  AI_ESTIMATED_IMAGE_COST_USD: 0.04,
+  AI_MAX_ESTIMATED_BOOK_COST_USD: 1,
+};
+
+const mockConfigService = {
+  get: jest.fn((key: string) => configDefaults[key]),
+};
+
+const mockSafetyService = {
+  assertUserInputAllowed: jest.fn(),
 };
 
 function setupCreateBookMocks(prisma: ReturnType<typeof makePrismaMock>) {
@@ -109,6 +130,11 @@ describe('Books ownership boundaries', () => {
     mockJobsService.markQueueingFailed.mockResolvedValue(undefined);
     mockJobsService.findLatestGenerationJob.mockResolvedValue(null);
     mockJobsService.findGenerationJobForUser.mockResolvedValue(null);
+    mockConfigService.get.mockImplementation(
+      (key: string) => configDefaults[key],
+    );
+    prisma.book.count.mockResolvedValue(0);
+    prisma.job.count.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -116,6 +142,8 @@ describe('Books ownership boundaries', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: JobsService, useValue: mockJobsService },
         { provide: StorageService, useValue: mockStorageService },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: SafetyService, useValue: mockSafetyService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();

@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 
@@ -6,6 +11,7 @@ import { BooksService } from '../books.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { GENERATION_QUEUE } from '../../queues/generation-queue.constants';
+import { SafetyService } from '../../safety/safety.service';
 import { StorageService } from '../../storage/storage.service';
 
 const mockPrismaService = {
@@ -20,6 +26,7 @@ const mockPrismaService = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     findFirst: jest.fn(),
+    count: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
@@ -36,6 +43,7 @@ const mockPrismaService = {
   job: {
     create: jest.fn(),
     findFirst: jest.fn(),
+    count: jest.fn(),
     update: jest.fn(),
   },
   template: {
@@ -59,6 +67,23 @@ const mockStorageService = {
   deleteFiles: jest.fn(),
 };
 
+const configDefaults: Record<string, unknown> = {
+  GENERATION_ENABLED: true,
+  GENERATION_MAX_ACTIVE_JOBS_PER_USER: 1,
+  GENERATION_DAILY_JOB_LIMIT_PER_USER: 10,
+  AI_ESTIMATED_TEXT_PAGE_COST_USD: 0.002,
+  AI_ESTIMATED_IMAGE_COST_USD: 0.04,
+  AI_MAX_ESTIMATED_BOOK_COST_USD: 1,
+};
+
+const mockConfigService = {
+  get: jest.fn((key: string) => configDefaults[key]),
+};
+
+const mockSafetyService = {
+  assertUserInputAllowed: jest.fn(),
+};
+
 describe('BooksService', () => {
   let service: BooksService;
 
@@ -67,6 +92,11 @@ describe('BooksService', () => {
     mockJobsService.markQueueingFailed.mockResolvedValue(undefined);
     mockJobsService.findLatestGenerationJob.mockResolvedValue(null);
     mockJobsService.findGenerationJobForUser.mockResolvedValue(null);
+    mockConfigService.get.mockImplementation(
+      (key: string) => configDefaults[key],
+    );
+    mockPrismaService.book.count.mockResolvedValue(0);
+    mockPrismaService.job.count.mockResolvedValue(0);
     mockPrismaService.$queryRaw.mockResolvedValue([
       {
         freeGenerationsUsed: 1,
@@ -89,6 +119,8 @@ describe('BooksService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JobsService, useValue: mockJobsService },
         { provide: StorageService, useValue: mockStorageService },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: SafetyService, useValue: mockSafetyService },
         { provide: getQueueToken(GENERATION_QUEUE), useValue: mockQueue },
       ],
     }).compile();
@@ -190,6 +222,19 @@ describe('BooksService', () => {
       const result = await service.createBook('user-1', dto);
 
       expect(result.id).toBe('book-1');
+      expect(mockSafetyService.assertUserInputAllowed).toHaveBeenCalledWith([
+        { label: 'Child name', value: 'Masha' },
+        { label: 'Child interests', value: undefined },
+        { label: 'Book title', value: 'My Book' },
+        { label: 'Child name in story', value: undefined },
+      ]);
+      expect(mockPrismaService.book.count).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      });
+      expect(mockPrismaService.job.count).toHaveBeenCalled();
       expect(mockPrismaService.$queryRaw).toHaveBeenCalledTimes(1);
       expect(mockPrismaService.job.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -208,6 +253,91 @@ describe('BooksService', () => {
           backoff: { type: 'exponential', delay: 5000 },
         },
       );
+    });
+
+    it('throws ServiceUnavailableException when generation is disabled', async () => {
+      mockConfigService.get.mockImplementation((key: string) =>
+        key === 'GENERATION_ENABLED' ? false : configDefaults[key],
+      );
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+
+      await expect(service.createBook('user-1', dto)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(mockPrismaService.book.create).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when active generation limit is reached', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+      mockPrismaService.book.count.mockResolvedValue(1);
+
+      await expect(service.createBook('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.book.create).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when daily generation job limit is reached', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+      });
+      mockPrismaService.job.count.mockResolvedValue(10);
+
+      await expect(service.createBook('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.book.create).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when estimated cost exceeds the cap', async () => {
+      mockConfigService.get.mockImplementation((key: string) =>
+        key === 'AI_MAX_ESTIMATED_BOOK_COST_USD' ? 0.01 : configDefaults[key],
+      );
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+      });
+      mockPrismaService.child.findFirst.mockResolvedValue({
+        id: 'child-1',
+        name: 'Masha',
+      });
+      mockPrismaService.template.findFirst.mockResolvedValue({
+        id: 'template-1',
+        isActive: true,
+        pageCount: 8,
+      });
+
+      await expect(service.createBook('user-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.book.create).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException when free plan limit is reached', async () => {

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PdfModule } from '../pdf/pdf.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SafetyModule } from '../safety/safety.module';
 import { StorageModule } from '../storage/storage.module';
 import { DallEProvider } from './dalle.provider';
 import { GenerationService } from './generation.service';
@@ -13,7 +14,7 @@ import type { IllustrationProvider } from './illustration-types';
 import type { StoryProvider } from './types';
 
 @Module({
-  imports: [PrismaModule, StorageModule, PdfModule, ConfigModule],
+  imports: [PrismaModule, StorageModule, PdfModule, ConfigModule, SafetyModule],
   providers: [
     GenerationService,
     {
