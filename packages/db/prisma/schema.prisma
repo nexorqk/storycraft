@@ -79,7 +79,7 @@ model User {
   googleId                   String            @unique
   locale                     String            @default("ru")
   freeGenerationsUsed        Int               @default(0)
-  freeGenerationsPeriodStart DateTime          @default(dbgenerated("date_trunc('month', CURRENT_TIMESTAMP)::timestamp(3)"))
+  freeGenerationsPeriodStart DateTime          @default(dbgenerated("(date_trunc('month'::text, CURRENT_TIMESTAMP))::timestamp(3) without time zone"))
   createdAt                  DateTime          @default(now())
   updatedAt                  DateTime          @updatedAt
   authSessions               AuthSession[]

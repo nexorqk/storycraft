@@ -4,12 +4,15 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/web/package.json ./apps/web/
 RUN pnpm fetch
 COPY . .
 RUN pnpm install --offline
+RUN pnpm --filter @storycraft/shared build
 RUN pnpm --filter @storycraft/web build
 
 FROM base AS runner

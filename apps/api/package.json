@@ -5,9 +5,9 @@
   "type": "commonjs",
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "pnpm --filter @storycraft/shared build && nest build",
     "start": "node dist/main.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "pnpm --filter @storycraft/shared build && tsc -p tsconfig.json --noEmit",
     "lint": "pnpm typecheck",
     "test": "jest --verbose"
   },
