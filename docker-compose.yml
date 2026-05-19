@@ -46,7 +46,7 @@ services:
   garage:
     image: dxflrs/garage:v1.1.0
     ports:
-      - '3900:3900'
+      - '127.0.0.1:3900:3900'
       - '127.0.0.1:3901:3901'
       - '127.0.0.1:3902:3902'
       - '127.0.0.1:3903:3903'
@@ -59,8 +59,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    ports:
-      - '3001:3001'
+    expose:
+      - '3001'
     env_file:
       - .env
     environment:
@@ -81,8 +81,8 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
-    ports:
-      - '${WEB_PORT:-3000}:3000'
+    expose:
+      - '3000'
     env_file:
       - .env
     depends_on:
@@ -90,7 +90,25 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+      - garage
+
 volumes:
   postgres_data:
   redis_data:
   garage_data:
+  caddy_data:
+  caddy_config:

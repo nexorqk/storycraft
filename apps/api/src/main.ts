@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
@@ -19,7 +20,7 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
   const logger = new StructuredLogger('Bootstrap', isProduction);
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: getLogLevels(isProduction),
     bufferLogs: true,
   });
@@ -28,6 +29,7 @@ async function bootstrap() {
   const port = config.getOrThrow<number>('API_PORT');
 
   app.enableShutdownHooks();
+  app.set('trust proxy', 1);
   app.setGlobalPrefix('api');
   app.use(securityHeadersMiddleware);
   app.use(requestIdMiddleware);
