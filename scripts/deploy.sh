@@ -50,9 +50,28 @@ fi
 
 echo "Environment OK"
 echo ""
+echo "=== Check for uncommitted changes ==="
+if [ -n "$(git status --short)" ]; then
+  echo "Error: you have uncommitted changes. Commit or stash them before deploying:"
+  git status --short
+  exit 1
+fi
+
+echo ""
 echo "=== Release gates ==="
 pnpm install --frozen-lockfile
 pnpm db:generate
+echo ""
+echo "=== Auto-formatting ==="
+pnpm format
+if [ -n "$(git status --short)" ]; then
+  echo ""
+  echo "Formatting produced changes. Commit them before deploying:"
+  git status --short
+  echo ""
+  echo "Run: pnpm format && git add -A && git commit -m 'style: autoformat' && git push"
+  exit 1
+fi
 pnpm format:check
 pnpm typecheck
 pnpm test
