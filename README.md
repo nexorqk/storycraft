@@ -1,10 +1,10 @@
 # Storycraft
 
-AI-generated Russian children's books in PDF format.
+AI-generated Russian children's books.
 
 **Live:** https://storycraftbooks.com
 
-Storycraft helps parents create personalized children's books with unique stories and illustrations tailored to their child's interests. The platform generates complete books in Russian, including custom illustrations, and delivers them as downloadable PDFs.
+Storycraft helps parents create personalized children's books with unique stories and illustrations tailored to their child's interests. The platform generates complete books in Russian, including custom illustrations.
 
 ## Stack
 
@@ -21,7 +21,6 @@ Storycraft helps parents create personalized children's books with unique storie
 - Child profile management
 - AI story generation in Russian
 - DALL-E illustration generation
-- PDF generation and download
 - Dark/light theme support
 - Account data export and deletion
 

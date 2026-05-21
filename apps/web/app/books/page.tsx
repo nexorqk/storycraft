@@ -256,7 +256,7 @@ export default function BooksPage() {
                         className="primary-button"
                         download
                       >
-                        Download PDF
+                        Download Book
                       </a>
                     ) : (
                       <button className="primary-button" type="button" disabled>

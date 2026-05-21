@@ -40,7 +40,7 @@ export default function SettingsPage() {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      'Delete your account, child profiles, books, PDFs, and illustrations?',
+      'Delete your account, child profiles, books, and illustrations?',
     );
 
     if (!confirmed) {

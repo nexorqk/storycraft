@@ -272,11 +272,11 @@ export default function BookDetailPage() {
       {book.status === 'COMPLETED' && book.pdfObjectKey && (
         <div className="panel panel-success">
           <h2>Your book is ready!</h2>
-          <p>The PDF has been generated and is ready for download.</p>
+          <p>Your book has been generated and is ready.</p>
           <div className="card-actions" style={{ marginTop: 16 }}>
             {pdfUrl ? (
               <a href={pdfUrl} className="primary-button" download>
-                Download PDF
+                Download Book
               </a>
             ) : (
               <button className="primary-button" type="button" disabled>

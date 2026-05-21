@@ -8,7 +8,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-brand">
           <h1>Storycraft</h1>
-          <p>AI-generated Russian children&apos;s books in PDF format.</p>
+          <p>AI-generated Russian children&apos;s books.</p>
         </div>
 
         <button

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
           <h2>1. Introduction</h2>
           <p>
             Storycraft (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;)
-            provides AI-generated Russian children&apos;s books in PDF format.
+            provides AI-generated Russian children&apos;s books.
             This Privacy Policy explains how we collect, use, and protect your
             personal information.
           </p>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
 
           <h3>2.3 Generated Content</h3>
           <p>
-            We store the books, illustrations, and PDFs generated through our
+            We store the books and illustrations generated through our
             service.
           </p>
 
