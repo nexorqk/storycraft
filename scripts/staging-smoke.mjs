@@ -60,7 +60,7 @@ if (!skipWeb) {
   checks.push({
     name: 'Web root',
     url: webOrigin,
-    expect: (response) => expectStatus(response, 200),
+    expect: (response) => expectWebRoot(response, webOrigin),
   });
 }
 
@@ -107,6 +107,25 @@ async function expectJsonStatusOk(response) {
   if (body.status !== 'ok') {
     throw new Error(`expected JSON status "ok", got ${JSON.stringify(body)}`);
   }
+}
+
+async function expectWebRoot(response, webOrigin) {
+  if (response.status === 200) {
+    return;
+  }
+
+  if ([307, 308].includes(response.status)) {
+    const location = response.headers.get('location');
+
+    if (location === '/login' || location === `${webOrigin}/login`) {
+      return;
+    }
+  }
+
+  const body = await response.text().catch(() => '');
+  throw new Error(
+    `expected HTTP 200 or redirect to /login, got ${response.status}${body ? `: ${body.slice(0, 300)}` : ''}`,
+  );
 }
 
 function fail(message) {

@@ -21,6 +21,9 @@ STAGING_WEB_URL=https://staging.example.com \
 pnpm smoke:staging
 ```
 
+The web smoke check accepts either a public `200` response or an anonymous
+redirect to `/login`.
+
 Apply database migrations with:
 
 ```bash

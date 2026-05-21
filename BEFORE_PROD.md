@@ -21,6 +21,8 @@ or legal review.
 | CI                             | Done: GitHub Actions runs install, Prisma generate, format, typecheck, tests, and build.                                        |
 | Staging smoke check            | Done: `pnpm smoke:staging` checks API liveness/readiness, public templates, anonymous auth rejection, and web root.             |
 | Formatting/tests               | Done: `pnpm format:check`, `pnpm typecheck`, `pnpm test`, and `pnpm build` are expected release gates.                          |
+| Docker healthchecks            | Done: API and Web have Docker healthchecks; Caddy waits for healthy state before starting.                                      |
+| Deploy script                  | Done: `scripts/deploy.sh` automates release gates, build, deploy, and smoke checks with placeholder validation.                 |
 
 ## Required Outside Repo
 
@@ -46,6 +48,12 @@ pnpm format:check
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+Or use the automated deploy script (validates `.env`, runs gates, builds, deploys, and smokes):
+
+```bash
+./scripts/deploy.sh
 ```
 
 After staging deploy:

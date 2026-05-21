@@ -17,3 +17,13 @@ www.storycraftbooks.com {
 s3.storycraftbooks.com {
 	reverse_proxy garage:3900
 }
+
+app.storycraftbooks.com {
+	encode zstd gzip
+	reverse_proxy shippy-ops-ai-nginx:80
+}
+
+api.storycraftbooks.com {
+	encode zstd gzip
+	reverse_proxy shippy-ops-ai-api:4000
+}

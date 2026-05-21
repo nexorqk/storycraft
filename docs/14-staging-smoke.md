@@ -26,7 +26,8 @@ The script verifies:
 - `GET /api/health/ready` returns `200` and JSON `status: "ok"`;
 - `GET /api/templates` returns `200` with a `templates` array;
 - `GET /api/books` returns `401` without a session;
-- Web root returns `200`, unless `SMOKE_SKIP_WEB=true`.
+- Web root returns `200` or redirects anonymous users to `/login`, unless
+  `SMOKE_SKIP_WEB=true`.
 
 ## Manual Happy Path
 

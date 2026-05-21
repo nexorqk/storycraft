@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { ThemeToggle } from './theme-toggle';
+
 const navItems = [
   { label: 'Dashboard', href: '/' },
   { label: 'Children', href: '/children' },
@@ -35,6 +37,7 @@ export function AppShell({ active, children }: AppShellProps) {
         </nav>
 
         <div className="sidebar-footer">
+          <ThemeToggle />
           <Link className="sidebar-link" href="/privacy">
             Privacy Policy
           </Link>
