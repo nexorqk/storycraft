@@ -6,11 +6,13 @@ type ThemeMode = 'system' | 'light' | 'dark';
 
 function applyTheme(mode: ThemeMode) {
   const resolved =
-    mode === 'system'
+    mode === 'system' && typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light'
-      : mode;
+      : mode === 'system'
+        ? 'light'
+        : mode;
   document.documentElement.setAttribute('data-theme', resolved);
 }
 
@@ -28,7 +30,11 @@ export function ThemeToggle() {
     localStorage.setItem('storycraft-theme', mode);
     applyTheme(mode);
 
-    if (mode === 'system') {
+    if (
+      mode === 'system' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia
+    ) {
       const mql = window.matchMedia('(prefers-color-scheme: dark)');
       const listener = (e: MediaQueryListEvent) => {
         document.documentElement.setAttribute(
