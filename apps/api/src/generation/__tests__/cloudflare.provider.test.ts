@@ -77,7 +77,9 @@ describe('CloudflareAiProvider', () => {
   it('generates a page successfully', async () => {
     fetchSpy.mockReturnValue(
       mockFetchResponse({
-        result: { response: 'TEXT: Привет, Маша!\nILLUSTRATION: A cute dinosaur' },
+        result: {
+          response: 'TEXT: Привет, Маша!\nILLUSTRATION: A cute dinosaur',
+        },
         success: true,
       }),
     );
@@ -89,7 +91,9 @@ describe('CloudflareAiProvider', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     const callArgs = fetchSpy.mock.calls[0];
-    expect(callArgs[0]).toContain('/accounts/test-account-id/ai/run/@cf/meta/llama-3-8b-instruct');
+    expect(callArgs[0]).toContain(
+      '/accounts/test-account-id/ai/run/@cf/meta/llama-3-8b-instruct',
+    );
     expect(callArgs[1]).toMatchObject({
       method: 'POST',
       headers: {

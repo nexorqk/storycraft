@@ -31,7 +31,8 @@ export class CloudflareAiProvider implements StoryProvider {
   constructor(private readonly config: ConfigService) {
     this.accountId = this.config.getOrThrow<string>('CLOUDFLARE_ACCOUNT_ID');
     this.apiToken = this.config.getOrThrow<string>('CLOUDFLARE_API_TOKEN');
-    this.model = this.config.get('CLOUDFLARE_MODEL') ?? '@cf/meta/llama-3-8b-instruct';
+    this.model =
+      this.config.get('CLOUDFLARE_MODEL') ?? '@cf/meta/llama-3-8b-instruct';
     this.maxRetries = this.config.get('CLOUDFLARE_MAX_RETRIES')
       ? parseInt(this.config.get('CLOUDFLARE_MAX_RETRIES')!, 10)
       : 3;
@@ -90,7 +91,7 @@ export class CloudflareAiProvider implements StoryProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiToken}`,
+        Authorization: `Bearer ${this.apiToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -109,7 +110,8 @@ export class CloudflareAiProvider implements StoryProvider {
     const data = (await response.json()) as CloudflareAiResponse;
 
     if (!data.success) {
-      const errorMessages = data.errors?.map((e) => e.message).join(', ') ?? 'Unknown error';
+      const errorMessages =
+        data.errors?.map((e) => e.message).join(', ') ?? 'Unknown error';
       throw new Error(`Cloudflare AI error: ${errorMessages}`);
     }
 
@@ -164,7 +166,9 @@ export class CloudflareAiProvider implements StoryProvider {
     }
 
     if (message.includes('429') || message.includes('rate limit')) {
-      return new ProviderRateLimitError(`Cloudflare AI rate limit: ${error.message}`);
+      return new ProviderRateLimitError(
+        `Cloudflare AI rate limit: ${error.message}`,
+      );
     }
 
     if (
@@ -172,7 +176,9 @@ export class CloudflareAiProvider implements StoryProvider {
       message.includes('timed out') ||
       message.includes('etimedout')
     ) {
-      return new ProviderTimeoutError(`Cloudflare AI timeout: ${error.message}`);
+      return new ProviderTimeoutError(
+        `Cloudflare AI timeout: ${error.message}`,
+      );
     }
 
     if (
@@ -181,7 +187,9 @@ export class CloudflareAiProvider implements StoryProvider {
       message.includes('503') ||
       message.includes('504')
     ) {
-      return new ProviderServerError(`Cloudflare AI server error: ${error.message}`);
+      return new ProviderServerError(
+        `Cloudflare AI server error: ${error.message}`,
+      );
     }
 
     return error;
