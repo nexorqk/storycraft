@@ -5,11 +5,11 @@ import { PdfModule } from '../pdf/pdf.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SafetyModule } from '../safety/safety.module';
 import { StorageModule } from '../storage/storage.module';
+import { CloudflareAiProvider } from './cloudflare.provider';
 import { DallEProvider } from './dalle.provider';
 import { GenerationService } from './generation.service';
 import { MockIllustrationProvider } from './mock-illustration.provider';
 import { MockStoryProvider } from './mock-story.provider';
-import { OpenAiProvider } from './openai.provider';
 import type { IllustrationProvider } from './illustration-types';
 import type { StoryProvider } from './types';
 
@@ -22,7 +22,7 @@ import type { StoryProvider } from './types';
       inject: [ConfigService],
       useFactory: (config: ConfigService): StoryProvider => {
         const useMock = config.get<string>('USE_MOCK_AI') === 'true';
-        return useMock ? new MockStoryProvider() : new OpenAiProvider(config);
+        return useMock ? new MockStoryProvider() : new CloudflareAiProvider(config);
       },
     },
     {

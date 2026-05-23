@@ -75,10 +75,12 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((value) => value === 'true'),
+    CLOUDFLARE_ACCOUNT_ID: z.string().default('replace-me'),
+    CLOUDFLARE_API_TOKEN: z.string().default('replace-me'),
+    CLOUDFLARE_MODEL: z.string().default('@cf/meta/llama-3-8b-instruct'),
+    CLOUDFLARE_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
+    CLOUDFLARE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
     OPENAI_API_KEY: z.string().default('replace-me'),
-    OPENAI_MODEL: z.string().default('gpt-4o-mini'),
-    OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
-    OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
     DALLE_MODEL: z.string().default('dall-e-3'),
     DALLE_SIZE: z
       .enum(['1024x1024', '1024x1792', '1792x1024'])
@@ -120,12 +122,28 @@ const envSchema = z
     RATE_LIMIT_LONG_LIMIT: z.coerce.number().int().positive().default(300),
   })
   .superRefine((data, ctx) => {
-    if (!data.USE_MOCK_AI && isPlaceholder(data.OPENAI_API_KEY)) {
-      addProductionIssue(
-        ctx,
-        'OPENAI_API_KEY',
-        'OPENAI_API_KEY must be set when USE_MOCK_AI is false',
-      );
+    if (!data.USE_MOCK_AI) {
+      if (isPlaceholder(data.CLOUDFLARE_ACCOUNT_ID)) {
+        addProductionIssue(
+          ctx,
+          'CLOUDFLARE_ACCOUNT_ID',
+          'CLOUDFLARE_ACCOUNT_ID must be set when USE_MOCK_AI is false',
+        );
+      }
+      if (isPlaceholder(data.CLOUDFLARE_API_TOKEN)) {
+        addProductionIssue(
+          ctx,
+          'CLOUDFLARE_API_TOKEN',
+          'CLOUDFLARE_API_TOKEN must be set when USE_MOCK_AI is false',
+        );
+      }
+      if (isPlaceholder(data.OPENAI_API_KEY)) {
+        addProductionIssue(
+          ctx,
+          'OPENAI_API_KEY',
+          'OPENAI_API_KEY must be set when USE_MOCK_AI is false (required for DALL-E)',
+        );
+      }
     }
 
     if (data.NODE_ENV !== 'production') {
@@ -138,6 +156,8 @@ const envSchema = z
       'SESSION_SECRET',
       'S3_ACCESS_KEY_ID',
       'S3_SECRET_ACCESS_KEY',
+      'CLOUDFLARE_ACCOUNT_ID',
+      'CLOUDFLARE_API_TOKEN',
       'OPENAI_API_KEY',
     ] as const;
 

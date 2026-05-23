@@ -34,6 +34,8 @@ describe('validateEnv', () => {
         S3_SECRET_ACCESS_KEY: 's3-secret-key',
         S3_FORCE_PATH_STYLE: 'false',
         USE_MOCK_AI: 'false',
+        CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account-id',
+        CLOUDFLARE_API_TOKEN: 'cloudflare-token',
         OPENAI_API_KEY: 'sk-production-key',
       }),
     ).not.toThrow();
