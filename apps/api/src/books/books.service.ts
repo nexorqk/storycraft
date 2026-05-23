@@ -181,7 +181,7 @@ export class BooksService {
               WHEN "freeGenerationsPeriodStart" < ${usagePeriod.start} THEN 1
               ELSE "freeGenerationsUsed" + 1
             END
-          WHERE "id" = ${userId}
+          WHERE "id" = ${userId}::uuid
             AND (
               "freeGenerationsPeriodStart" < ${usagePeriod.start}
               OR "freeGenerationsUsed" < ${FREE_PLAN_MONTHLY_BOOK_LIMIT}

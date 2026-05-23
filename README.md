@@ -1,6 +1,6 @@
 # Storycraft
 
-AI-generated Russian children's books.
+Create personalized AI-generated children's books in Russian.
 
 **Live:** https://storycraftbooks.com
 
@@ -48,4 +48,4 @@ pnpm dev
 
 ## License
 
-Private — not open source.
+MIT — see [LICENSE](./LICENSE) file.
