@@ -22,7 +22,7 @@ export function AppShell({ active, children }: AppShellProps) {
     <main className="shell">
       <aside className="sidebar" aria-label="Primary navigation">
         <p className="brand">Storycraft</p>
-        <p className="brand-subtitle">AI books for children</p>
+        <p className="brand-subtitle">Personalized stories for children</p>
         <nav className="nav">
           {navItems.map((item) => (
             <Link

@@ -1,4 +1,10 @@
-import { IsInt, IsString, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateAdminTemplatePageDto {
   @IsInt()
@@ -11,4 +17,23 @@ export class CreateAdminTemplatePageDto {
   @IsString()
   @MaxLength(2000)
   illustrationPrompt!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  baseText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  illustrationPromptBase?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  sceneDescription?: string;
+
+  @IsOptional()
+  @IsObject()
+  personalizationSlots?: Record<string, unknown>;
 }

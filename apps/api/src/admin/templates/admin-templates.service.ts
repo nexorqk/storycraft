@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Template, TemplatePage } from '@prisma/client';
+import type { Prisma, Template, TemplatePage } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
@@ -34,6 +34,10 @@ export type AdminTemplatePage = {
   pageNumber: number;
   textPrompt: string;
   illustrationPrompt: string;
+  baseText: string;
+  illustrationPromptBase: string | null;
+  sceneDescription: string | null;
+  personalizationSlots: unknown;
   createdAt: string;
   updatedAt: string;
 };
@@ -235,6 +239,10 @@ export class AdminTemplatesService {
         pageNumber: p.pageNumber,
         textPrompt: p.textPrompt,
         illustrationPrompt: p.illustrationPrompt,
+        baseText: p.baseText,
+        illustrationPromptBase: p.illustrationPromptBase,
+        sceneDescription: p.sceneDescription,
+        personalizationSlots: p.personalizationSlots,
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       })),
@@ -244,6 +252,39 @@ export class AdminTemplatesService {
   private normalizeOptionalText(value: string | undefined) {
     const normalized = value?.trim();
     return normalized || null;
+  }
+
+  private normalizeJsonObject(
+    value: Record<string, unknown> | undefined,
+  ): Prisma.InputJsonObject | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const normalized: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, fieldValue] of Object.entries(value)) {
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(key)) {
+        continue;
+      }
+
+      if (typeof fieldValue === 'string') {
+        normalized[key] = fieldValue.trim();
+      } else if (
+        typeof fieldValue === 'number' &&
+        Number.isFinite(fieldValue)
+      ) {
+        normalized[key] = fieldValue;
+      } else if (typeof fieldValue === 'boolean') {
+        normalized[key] = fieldValue;
+      } else if (fieldValue === null) {
+        normalized[key] = null;
+      }
+    }
+
+    return Object.keys(normalized).length > 0
+      ? (normalized as Prisma.InputJsonObject)
+      : undefined;
   }
 
   async createPage(
@@ -264,6 +305,14 @@ export class AdminTemplatesService {
         pageNumber: dto.pageNumber,
         textPrompt: dto.textPrompt.trim(),
         illustrationPrompt: dto.illustrationPrompt.trim(),
+        baseText: (dto.baseText ?? dto.textPrompt).trim(),
+        illustrationPromptBase: this.normalizeOptionalText(
+          dto.illustrationPromptBase ?? dto.illustrationPrompt,
+        ),
+        sceneDescription: this.normalizeOptionalText(dto.sceneDescription),
+        personalizationSlots: this.normalizeJsonObject(
+          dto.personalizationSlots,
+        ),
       },
     });
 
@@ -286,6 +335,30 @@ export class AdminTemplatesService {
           : {}),
         ...(dto.illustrationPrompt !== undefined
           ? { illustrationPrompt: dto.illustrationPrompt.trim() }
+          : {}),
+        ...(dto.baseText !== undefined
+          ? { baseText: dto.baseText.trim() }
+          : {}),
+        ...(dto.illustrationPromptBase !== undefined
+          ? {
+              illustrationPromptBase: this.normalizeOptionalText(
+                dto.illustrationPromptBase,
+              ),
+            }
+          : {}),
+        ...(dto.sceneDescription !== undefined
+          ? {
+              sceneDescription: this.normalizeOptionalText(
+                dto.sceneDescription,
+              ),
+            }
+          : {}),
+        ...(dto.personalizationSlots !== undefined
+          ? {
+              personalizationSlots: this.normalizeJsonObject(
+                dto.personalizationSlots,
+              ),
+            }
           : {}),
       },
     });
@@ -319,6 +392,10 @@ export class AdminTemplatesService {
       pageNumber: page.pageNumber,
       textPrompt: page.textPrompt,
       illustrationPrompt: page.illustrationPrompt,
+      baseText: page.baseText,
+      illustrationPromptBase: page.illustrationPromptBase,
+      sceneDescription: page.sceneDescription,
+      personalizationSlots: page.personalizationSlots,
       createdAt: page.createdAt.toISOString(),
       updatedAt: page.updatedAt.toISOString(),
     };

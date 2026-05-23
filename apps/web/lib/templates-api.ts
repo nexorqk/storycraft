@@ -4,6 +4,10 @@ export type TemplatePageInfo = {
   pageNumber: number;
   textPrompt: string;
   illustrationPrompt: string;
+  baseText: string;
+  illustrationPromptBase: string | null;
+  sceneDescription: string | null;
+  personalizationSlots: unknown;
 };
 
 export type TemplateInfo = {

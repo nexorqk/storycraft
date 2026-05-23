@@ -13,12 +13,12 @@ const sections = [
   },
   {
     title: 'Book templates',
-    body: 'Russian story structures with generation and illustration prompts.',
+    body: 'Russian story templates with reusable personalization placeholders.',
     status: 'Ready',
   },
   {
-    title: 'Generation jobs',
-    body: 'Persistent async state for books and illustrations.',
+    title: 'Story preparation',
+    body: 'Persistent async state for prepared books and reader pages.',
     status: 'Ready',
   },
 ];
@@ -64,8 +64,8 @@ export default async function HomePage() {
           <p className="eyebrow">Welcome back</p>
           <h1>Storycraft workspace</h1>
           <p className="header-copy">
-            Russian children books, parent profiles, generation jobs, and
-            illustrated books.
+            Russian children stories, parent profiles, preparation jobs, and
+            interactive reader pages.
           </p>
         </div>
         <span className="status-pill">Free plan first</span>

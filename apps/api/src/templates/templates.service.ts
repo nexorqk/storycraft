@@ -7,6 +7,10 @@ export type PublicTemplatePage = {
   pageNumber: number;
   textPrompt: string;
   illustrationPrompt: string;
+  baseText: string;
+  illustrationPromptBase: string | null;
+  sceneDescription: string | null;
+  personalizationSlots: unknown;
 };
 
 export type PublicTemplate = {
@@ -66,6 +70,10 @@ export class TemplatesService {
         pageNumber: page.pageNumber,
         textPrompt: page.textPrompt,
         illustrationPrompt: page.illustrationPrompt,
+        baseText: page.baseText,
+        illustrationPromptBase: page.illustrationPromptBase,
+        sceneDescription: page.sceneDescription,
+        personalizationSlots: page.personalizationSlots,
       })),
     };
   }

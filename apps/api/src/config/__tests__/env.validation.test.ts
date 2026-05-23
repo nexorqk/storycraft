@@ -10,10 +10,10 @@ describe('validateEnv', () => {
       validateEnv({
         NODE_ENV: 'production',
       }),
-    ).toThrow(/USE_MOCK_AI|SESSION_SECRET|GOOGLE_CLIENT_ID|S3_ENDPOINT/);
+    ).toThrow(/SESSION_SECRET|GOOGLE_CLIENT_ID|S3_ENDPOINT/);
   });
 
-  it('accepts a production configuration with real external values', () => {
+  it('accepts a production no-AI configuration without AI provider secrets', () => {
     expect(() =>
       validateEnv({
         NODE_ENV: 'production',
@@ -33,10 +33,14 @@ describe('validateEnv', () => {
         S3_ACCESS_KEY_ID: 's3-access-key',
         S3_SECRET_ACCESS_KEY: 's3-secret-key',
         S3_FORCE_PATH_STYLE: 'false',
+      }),
+    ).not.toThrow();
+  });
+
+  it('does not require AI secrets when USE_MOCK_AI is false', () => {
+    expect(() =>
+      validateEnv({
         USE_MOCK_AI: 'false',
-        CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account-id',
-        CLOUDFLARE_API_TOKEN: 'cloudflare-token',
-        OPENAI_API_KEY: 'sk-production-key',
       }),
     ).not.toThrow();
   });

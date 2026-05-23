@@ -11,7 +11,7 @@ export default function PrivacyPage() {
           <h2>1. Introduction</h2>
           <p>
             Storycraft (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;)
-            provides AI-generated Russian children&apos;s books. This Privacy
+            provides personalized Russian children&apos;s stories. This Privacy
             Policy explains how we collect, use, and protect your personal
             information.
           </p>
@@ -28,19 +28,19 @@ export default function PrivacyPage() {
           <h3>2.2 Child Profiles</h3>
           <p>
             You may create child profiles containing a name, birth date, and
-            interests. This information is used solely to personalize generated
+            interests. This information is used solely to personalize prepared
             book content.
           </p>
 
-          <h3>2.3 Generated Content</h3>
+          <h3>2.3 Prepared Content</h3>
           <p>
-            We store the books and illustrations generated through our service.
+            We store the books and story pages prepared through our service.
           </p>
 
           <h3>2.4 Usage Data</h3>
           <p>
-            We track generation job status, completion rates, and error logs for
-            operational purposes.
+            We track story preparation status, completion rates, and error logs
+            for operational purposes.
           </p>
         </section>
 
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
           <ul>
             <li>Provide and maintain the Storycraft service</li>
             <li>
-              Generate personalized children&apos;s books based on child
+              Prepare personalized children&apos;s stories based on child
               profiles
             </li>
             <li>Monitor service performance and fix errors</li>
@@ -60,11 +60,8 @@ export default function PrivacyPage() {
         <section>
           <h2>4. Data Storage and Security</h2>
           <p>
-            Your data is stored in a PostgreSQL database and generated
-            illustrations are stored in S3-compatible object storage. We use
-            signed URLs to control access to stored files. Session
-            authentication is managed via encrypted JWT tokens stored in
-            httpOnly cookies.
+            Your data is stored in a PostgreSQL database. Session authentication
+            is managed via encrypted JWT tokens stored in httpOnly cookies.
           </p>
         </section>
 
@@ -76,23 +73,15 @@ export default function PrivacyPage() {
               <strong>Google OAuth</strong> — for authentication (subject to
               Google&apos;s privacy policy)
             </li>
-            <li>
-              <strong>OpenAI API</strong> — for text and image generation
-              (subject to OpenAI&apos;s privacy policy)
-            </li>
           </ul>
-          <p>
-            Child profile data (name, age, interests) is sent to AI providers as
-            part of generation prompts. We do not share your email or other
-            account details with AI providers.
-          </p>
+          <p>Story text is prepared from manually written templates.</p>
         </section>
 
         <section>
           <h2>6. Data Retention</h2>
           <p>
-            We retain your account data and generated content for as long as
-            your account is active. You may request deletion of your data at any
+            We retain your account data and prepared content for as long as your
+            account is active. You may request deletion of your data at any
             time.
           </p>
         </section>
@@ -114,7 +103,7 @@ export default function PrivacyPage() {
             <li>Access your personal data</li>
             <li>Request correction of inaccurate data</li>
             <li>Request deletion of your account and associated data</li>
-            <li>Export your generated books and data</li>
+            <li>Export your prepared books and data</li>
           </ul>
         </section>
 

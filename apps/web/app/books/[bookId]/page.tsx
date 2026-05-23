@@ -10,14 +10,13 @@ import {
   getBook,
   generateBook,
   getBookProgress,
-  getPdfUrl,
   getIllustrationUrls,
 } from '../../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
-  PROCESSING: 'Processing',
-  COMPLETED: 'Completed',
+  PROCESSING: 'Preparing',
+  COMPLETED: 'Story ready',
   FAILED: 'Failed',
 };
 
@@ -37,7 +36,6 @@ export default function BookDetailPage() {
   } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [illustrationUrls, setIllustrationUrls] = useState<
     Record<string, string>
   >({});
@@ -50,16 +48,6 @@ export default function BookDetailPage() {
       .then((data) => {
         if (!cancelled) {
           setBook(data.book);
-
-          if (data.book.status === 'COMPLETED' && data.book.pdfObjectKey) {
-            getPdfUrl(bookId)
-              .then((pdfData) => {
-                if (!cancelled) {
-                  setPdfUrl(pdfData.url);
-                }
-              })
-              .catch(() => {});
-          }
 
           const completedIlls = data.book.illustrations.filter(
             (ill) => ill.status === 'COMPLETED' && ill.objectKey,
@@ -143,7 +131,9 @@ export default function BookDetailPage() {
       loadBook();
     } catch (err: unknown) {
       setGenerateError(
-        err instanceof Error ? err.message : 'Failed to start generation',
+        err instanceof Error
+          ? err.message
+          : 'Failed to start story preparation',
       );
     } finally {
       setGenerating(false);
@@ -226,7 +216,7 @@ export default function BookDetailPage() {
 
       {generateError && (
         <div className="panel panel-error">
-          <h2>Generation Error</h2>
+          <h2>Preparation Error</h2>
           <p>{generateError}</p>
         </div>
       )}
@@ -241,7 +231,7 @@ export default function BookDetailPage() {
       {isGenerating && progress && (
         <div className="panel">
           <div className="section-heading">
-            <h2>Generating your book</h2>
+            <h2>Preparing your story</h2>
           </div>
 
           <div className="progress-container">
@@ -264,25 +254,20 @@ export default function BookDetailPage() {
           </div>
 
           <p className="panel-status" style={{ marginTop: 12 }}>
-            This may take a few minutes. The page will update automatically.
+            Story pages are being created from the selected template. The page
+            will update automatically.
           </p>
         </div>
       )}
 
-      {book.status === 'COMPLETED' && book.pdfObjectKey && (
+      {book.status === 'COMPLETED' && (
         <div className="panel panel-success">
-          <h2>Your book is ready!</h2>
-          <p>Your book has been generated and is ready.</p>
+          <h2>Your story is ready!</h2>
+          <p>Your story has been prepared and is ready to read.</p>
           <div className="card-actions" style={{ marginTop: 16 }}>
-            {pdfUrl ? (
-              <a href={pdfUrl} className="primary-button" download>
-                Download Book
-              </a>
-            ) : (
-              <button className="primary-button" type="button" disabled>
-                Preparing download...
-              </button>
-            )}
+            <a href={`/books/${book.id}/read`} className="primary-button">
+              Open story
+            </a>
           </div>
         </div>
       )}
@@ -291,13 +276,13 @@ export default function BookDetailPage() {
         <div className="panel">
           <h2>
             {book.status === 'FAILED'
-              ? 'Generation failed'
-              : 'Ready to generate'}
+              ? 'Preparation failed'
+              : 'Ready to prepare'}
           </h2>
           <p>
             {book.status === 'FAILED'
-              ? 'You can retry generation. Previous pages will be cleared.'
-              : "Start generating your personalized Russian children's book."}
+              ? 'You can retry story preparation. Previous pages will be cleared.'
+              : "Create your personalized Russian children's story from the selected template."}
           </p>
           <div className="card-actions" style={{ marginTop: 16 }}>
             <button
@@ -306,7 +291,7 @@ export default function BookDetailPage() {
               disabled={generating}
               onClick={handleGenerate}
             >
-              {generating ? 'Starting...' : 'Generate Book'}
+              {generating ? 'Starting...' : 'Prepare Story'}
             </button>
           </div>
         </div>
@@ -321,8 +306,8 @@ export default function BookDetailPage() {
           {book.pages.length === 0 ? (
             <p className="empty-state">
               {isGenerating
-                ? 'Pages are being generated...'
-                : 'No pages generated yet.'}
+                ? 'Pages are being prepared...'
+                : 'No pages prepared yet.'}
             </p>
           ) : (
             <ol className="catalog-pages-list">

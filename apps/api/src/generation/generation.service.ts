@@ -1,11 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
-import { PdfService } from '../pdf/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { SafetyService } from '../safety/safety.service';
-import { StorageService } from '../storage/storage.service';
-import type { IllustrationProvider } from './illustration-types';
-import type { StoryPageRequest, StoryPageResult, StoryProvider } from './types';
+import { TemplateRendererService } from '../templates/template-renderer.service';
+import { TemplateVariablesService } from '../templates/template-variables.service';
 
 type ProgressCallback = (completed: number, total: number) => Promise<void>;
 
@@ -15,13 +12,8 @@ export class GenerationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject('STORY_PROVIDER')
-    private readonly storyProvider: StoryProvider,
-    @Inject('ILLUSTRATION_PROVIDER')
-    private readonly illustrationProvider: IllustrationProvider,
-    private readonly storage: StorageService,
-    private readonly pdf: PdfService,
-    private readonly safety: SafetyService,
+    private readonly templateRenderer: TemplateRendererService,
+    private readonly templateVariables: TemplateVariablesService,
   ) {}
 
   async generateBook(
@@ -45,110 +37,45 @@ export class GenerationService {
     try {
       await this.cleanupPartialData(bookId);
 
-      const childName = book.childNameInStory || book.child.name;
-      const childAge = book.child.birthDate
-        ? this.calculateAge(book.child.birthDate)
-        : null;
-      const childInterests = book.child.interests;
-      const coverStyle = book.coverStyle;
+      const variables = this.templateVariables.buildVariables(book);
 
-      const generatedPages: StoryPageResult[] = [];
-
-      for (const templatePage of book.template.pages) {
-        const request: StoryPageRequest = {
-          childName,
-          childAge,
-          childInterests,
-          templateStoryPrompt: book.template.storyPrompt,
-          templateIllustrationStylePrompt:
-            book.template.illustrationStylePrompt,
-          coverStyle,
-          pageNumber: templatePage.pageNumber,
-          pageTextPrompt: templatePage.textPrompt,
-          previousPages: generatedPages.map((p) => p.text),
-        };
+      for (const [index, templatePage] of book.template.pages.entries()) {
+        const baseText = templatePage.baseText || templatePage.textPrompt;
+        const renderedText = this.templateRenderer.renderText(
+          baseText,
+          variables,
+        );
 
         this.logger.log(
-          `Generating text for page ${templatePage.pageNumber} of book ${bookId}`,
+          `Rendering template page ${templatePage.pageNumber} for book ${bookId}`,
         );
 
-        const storyResult = await this.storyProvider.generatePage(request);
-        this.safety.assertGeneratedContentAllowed(
-          storyResult.text,
-          `Generated story page ${templatePage.pageNumber}`,
-        );
-        this.safety.assertGeneratedContentAllowed(
-          storyResult.illustrationPrompt,
-          `Generated illustration prompt ${templatePage.pageNumber}`,
-        );
-        generatedPages.push(storyResult);
-
-        const bookPage = await this.prisma.bookPage.create({
+        await this.prisma.bookPage.create({
           data: {
             bookId,
             templatePageId: templatePage.id,
             pageNumber: templatePage.pageNumber,
-            text: storyResult.text,
-            illustrationPrompt: storyResult.illustrationPrompt,
+            text: renderedText,
+            illustrationPrompt: templatePage.illustrationPromptBase || null,
           },
         });
 
         this.logger.log(
-          `Text generated for page ${templatePage.pageNumber} of book ${bookId}`,
-        );
-
-        this.logger.log(
-          `Generating illustration for page ${templatePage.pageNumber} of book ${bookId}`,
-        );
-
-        const illustrationResult = await this.illustrationProvider.generate({
-          prompt: storyResult.illustrationPrompt,
-          bookId,
-          pageNumber: templatePage.pageNumber,
-        });
-
-        const objectKey = this.storage.buildKey(
-          'illustrations',
-          bookId,
-          `${templatePage.pageNumber}.png`,
-        );
-
-        await this.storage.uploadFile(
-          objectKey,
-          illustrationResult.buffer,
-          illustrationResult.mimeType,
-        );
-
-        await this.prisma.illustration.create({
-          data: {
-            bookId,
-            pageId: bookPage.id,
-            status: 'COMPLETED',
-            prompt: storyResult.illustrationPrompt,
-            objectKey,
-            provider: 'dall-e',
-          },
-        });
-
-        this.logger.log(
-          `Illustration uploaded for page ${templatePage.pageNumber} of book ${bookId}`,
+          `Template page ${templatePage.pageNumber} rendered for book ${bookId}`,
         );
 
         if (onProgress) {
-          await onProgress(templatePage.pageNumber, totalPages);
+          await onProgress(index + 1, totalPages);
         }
       }
-
-      this.logger.log(`Generating PDF for book ${bookId}`);
-
-      const pdfObjectKey = await this.pdf.generateBookPdf(bookId);
 
       await this.prisma.book.update({
         where: { id: bookId },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
-          pdfObjectKey,
+          errorMessage: null,
+          pdfObjectKey: null,
         },
       });
 
@@ -167,21 +94,6 @@ export class GenerationService {
 
       throw error;
     }
-  }
-
-  private calculateAge(birthDate: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-
-    return age;
   }
 
   private async cleanupPartialData(bookId: string): Promise<void> {

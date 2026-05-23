@@ -438,7 +438,7 @@ function TemplateForm({
               onChange={(e) =>
                 setForm((f) => ({ ...f, storyPrompt: e.target.value }))
               }
-              placeholder="Instructions for the AI to generate the story"
+              placeholder="Internal notes for this story template"
               rows={3}
             />
           </div>
@@ -512,8 +512,9 @@ function TemplateDetail({
   const [uploadingCover, setUploadingCover] = useState(false);
   const [newPage, setNewPage] = useState({
     pageNumber: 1,
-    textPrompt: '',
-    illustrationPrompt: '',
+    baseText: '',
+    illustrationPromptBase: '',
+    sceneDescription: '',
   });
 
   const load = useCallback(() => {
@@ -537,7 +538,14 @@ function TemplateDetail({
 
   const handleAddPage = async () => {
     try {
-      const result = await createAdminTemplatePage(templateId, newPage);
+      const result = await createAdminTemplatePage(templateId, {
+        pageNumber: newPage.pageNumber,
+        textPrompt: newPage.baseText,
+        illustrationPrompt: newPage.illustrationPromptBase,
+        baseText: newPage.baseText,
+        illustrationPromptBase: newPage.illustrationPromptBase,
+        sceneDescription: newPage.sceneDescription || undefined,
+      });
       setTemplate((prev) =>
         prev
           ? {
@@ -550,8 +558,9 @@ function TemplateDetail({
       );
       setNewPage({
         pageNumber: (template?.pages.length ?? 0) + 1,
-        textPrompt: '',
-        illustrationPrompt: '',
+        baseText: '',
+        illustrationPromptBase: '',
+        sceneDescription: '',
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to add page');
@@ -560,7 +569,11 @@ function TemplateDetail({
 
   const handleUpdatePage = async (
     pageId: string,
-    dto: { textPrompt?: string; illustrationPrompt?: string },
+    dto: {
+      baseText?: string;
+      illustrationPromptBase?: string;
+      sceneDescription?: string;
+    },
   ) => {
     try {
       const result = await updateAdminTemplatePage(templateId, pageId, dto);
@@ -667,11 +680,11 @@ function TemplateDetail({
             </dd>
           </div>
           <div>
-            <dt>Story Prompt</dt>
+            <dt>Template Notes</dt>
             <dd className="admin-prompt">{template.storyPrompt}</dd>
           </div>
           <div>
-            <dt>Illustration Style</dt>
+            <dt>Visual Style Notes</dt>
             <dd className="admin-prompt">{template.illustrationStylePrompt}</dd>
           </div>
         </dl>
@@ -731,9 +744,9 @@ function TemplateDetail({
               </div>
               <div className="admin-page-content">
                 <div className="field">
-                  <label>Text Prompt</label>
+                  <label>Base Text</label>
                   <textarea
-                    value={page.textPrompt}
+                    value={page.baseText}
                     onChange={(e) => {
                       const value = e.target.value;
                       setTemplate((prev) =>
@@ -742,7 +755,7 @@ function TemplateDetail({
                               ...prev,
                               pages: prev.pages.map((p) =>
                                 p.id === page.id
-                                  ? { ...p, textPrompt: value }
+                                  ? { ...p, baseText: value }
                                   : p,
                               ),
                             }
@@ -751,16 +764,16 @@ function TemplateDetail({
                     }}
                     onBlur={() =>
                       handleUpdatePage(page.id, {
-                        textPrompt: page.textPrompt,
+                        baseText: page.baseText,
                       })
                     }
-                    rows={2}
+                    rows={4}
                   />
                 </div>
                 <div className="field">
-                  <label>Illustration Prompt</label>
+                  <label>Illustration Prompt Base</label>
                   <textarea
-                    value={page.illustrationPrompt}
+                    value={page.illustrationPromptBase ?? ''}
                     onChange={(e) => {
                       const value = e.target.value;
                       setTemplate((prev) =>
@@ -769,7 +782,7 @@ function TemplateDetail({
                               ...prev,
                               pages: prev.pages.map((p) =>
                                 p.id === page.id
-                                  ? { ...p, illustrationPrompt: value }
+                                  ? { ...p, illustrationPromptBase: value }
                                   : p,
                               ),
                             }
@@ -778,7 +791,34 @@ function TemplateDetail({
                     }}
                     onBlur={() =>
                       handleUpdatePage(page.id, {
-                        illustrationPrompt: page.illustrationPrompt,
+                        illustrationPromptBase:
+                          page.illustrationPromptBase ?? '',
+                      })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Scene Description</label>
+                  <textarea
+                    value={page.sceneDescription ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTemplate((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              pages: prev.pages.map((p) =>
+                                p.id === page.id
+                                  ? { ...p, sceneDescription: value }
+                                  : p,
+                              ),
+                            }
+                          : prev,
+                      );
+                    }}
+                    onBlur={() =>
+                      handleUpdatePage(page.id, {
+                        sceneDescription: page.sceneDescription ?? '',
                       })
                     }
                   />
@@ -811,30 +851,43 @@ function TemplateDetail({
         </div>
 
         <div className="field">
-          <label htmlFor="newTextPrompt">Text Prompt</label>
+          <label htmlFor="newBaseText">Base Text</label>
           <textarea
-            id="newTextPrompt"
-            value={newPage.textPrompt}
+            id="newBaseText"
+            value={newPage.baseText}
             onChange={(e) =>
-              setNewPage((p) => ({ ...p, textPrompt: e.target.value }))
+              setNewPage((p) => ({ ...p, baseText: e.target.value }))
             }
-            placeholder="What happens on this page?"
+            placeholder="Story page text with placeholders like {childName}"
+            rows={4}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="newIllustPromptBase">Illustration Prompt Base</label>
+          <textarea
+            id="newIllustPromptBase"
+            value={newPage.illustrationPromptBase}
+            onChange={(e) =>
+              setNewPage((p) => ({
+                ...p,
+                illustrationPromptBase: e.target.value,
+              }))
+            }
+            placeholder="Optional visual direction for future illustrations"
             rows={2}
           />
         </div>
 
         <div className="field">
-          <label htmlFor="newIllustPrompt">Illustration Prompt</label>
+          <label htmlFor="newSceneDescription">Scene Description</label>
           <textarea
-            id="newIllustPrompt"
-            value={newPage.illustrationPrompt}
+            id="newSceneDescription"
+            value={newPage.sceneDescription}
             onChange={(e) =>
-              setNewPage((p) => ({
-                ...p,
-                illustrationPrompt: e.target.value,
-              }))
+              setNewPage((p) => ({ ...p, sceneDescription: e.target.value }))
             }
-            placeholder="Describe the illustration"
+            placeholder="Short internal scene summary"
             rows={2}
           />
         </div>
@@ -844,7 +897,7 @@ function TemplateDetail({
             className="primary-button"
             type="button"
             onClick={handleAddPage}
-            disabled={!newPage.textPrompt || !newPage.illustrationPrompt}
+            disabled={!newPage.baseText}
           >
             Add Page
           </button>

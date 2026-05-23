@@ -20,7 +20,6 @@ vi.mock('../lib/books-api', () => ({
   listBooks: vi.fn(),
   deleteBook: vi.fn(),
   getBookProgress: vi.fn(),
-  getPdfUrl: vi.fn(),
 }));
 
 vi.mock('../lib/children-api', () => ({
@@ -85,6 +84,10 @@ const sampleTemplates = [
         pageNumber: 1,
         textPrompt: 'Once upon a time',
         illustrationPrompt: 'A forest',
+        baseText: 'Once upon a time, {childName} found a star.',
+        illustrationPromptBase: 'A forest',
+        sceneDescription: 'Opening scene',
+        personalizationSlots: null,
       },
     ],
   },
@@ -141,7 +144,7 @@ describe('CreateBookPage', () => {
 
   it('displays usage remaining on the page', async () => {
     render(<CreateBookPage />);
-    await screen.findByText('generations left');
+    await screen.findByText('stories left');
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 
@@ -173,6 +176,7 @@ describe('CreateBookPage', () => {
         childNameInStory: null,
         coverStyle: 'default',
         language: 'ru',
+        personalization: null,
         status: 'PENDING',
         pdfObjectKey: null,
         errorMessage: null,
@@ -206,6 +210,56 @@ describe('CreateBookPage', () => {
       coverStyle: 'default',
       language: 'ru',
     });
+  });
+
+  it('submits optional personalization values when provided', async () => {
+    const user = userEvent.setup();
+    mockCreateBook.mockResolvedValue({
+      book: {
+        id: 'b1',
+        title: null,
+        childNameInStory: null,
+        coverStyle: 'default',
+        language: 'ru',
+        personalization: {
+          favoriteToy: 'плюшевого динозавра',
+          setting: 'звёздный сад',
+        },
+        status: 'PENDING',
+        pdfObjectKey: null,
+        errorMessage: null,
+        completedAt: null,
+        createdAt: '2025-06-01T00:00:00Z',
+        updatedAt: '2025-06-01T00:00:00Z',
+        child: { id: 'c1', name: 'Masha' },
+        template: { id: 't1', slug: 'adventure', title: 'Adventure Story' },
+      },
+    });
+
+    render(<CreateBookPage />);
+    await screen.findByText('Masha');
+
+    await user.click(screen.getByRole('button', { name: /masha/i }));
+    await user.click(screen.getByRole('button', { name: /adventure story/i }));
+    await user.type(
+      screen.getByPlaceholderText('e.g. плюшевого динозавра'),
+      'плюшевого динозавра',
+    );
+    await user.type(
+      screen.getByPlaceholderText('e.g. звёздный сад'),
+      'звёздный сад',
+    );
+    await user.click(screen.getByRole('button', { name: /review & create/i }));
+    await user.click(screen.getByRole('button', { name: /create book/i }));
+
+    expect(mockCreateBook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personalization: {
+          favoriteToy: 'плюшевого динозавра',
+          setting: 'звёздный сад',
+        },
+      }),
+    );
   });
 
   it('shows error when book creation fails', async () => {

@@ -6,9 +6,29 @@ const prisma = new PrismaClient();
 
 type TemplatePageSeed = {
   pageNumber: number;
-  textPrompt: string;
-  illustrationPrompt: string;
+  textPrompt?: string;
+  illustrationPrompt?: string;
+  baseText?: string;
+  illustrationPromptBase?: string;
+  sceneDescription?: string;
+  personalizationSlots?: Record<string, string>;
 };
+
+function normalizeTemplatePage(page: TemplatePageSeed) {
+  const baseText = page.baseText ?? page.textPrompt ?? '';
+  const illustrationPromptBase =
+    page.illustrationPromptBase ?? page.illustrationPrompt ?? null;
+
+  return {
+    pageNumber: page.pageNumber,
+    textPrompt: page.textPrompt ?? baseText,
+    illustrationPrompt: page.illustrationPrompt ?? illustrationPromptBase ?? '',
+    baseText,
+    illustrationPromptBase,
+    sceneDescription: page.sceneDescription ?? null,
+    personalizationSlots: page.personalizationSlots,
+  };
+}
 
 async function upsertTemplateWithPages(
   slug: string,
@@ -21,6 +41,7 @@ async function upsertTemplateWithPages(
     pageCount: number;
     storyPrompt: string;
     illustrationStylePrompt: string;
+    isActive?: boolean;
   },
   pages: TemplatePageSeed[],
 ) {
@@ -37,13 +58,18 @@ async function upsertTemplateWithPages(
         title: template.title,
         description: template.description,
         language: template.language,
+        ageMin: template.ageMin,
+        ageMax: template.ageMax,
         pageCount: template.pageCount,
         storyPrompt: template.storyPrompt,
         illustrationStylePrompt: template.illustrationStylePrompt,
+        isActive: template.isActive ?? true,
       },
     });
 
     for (const page of pages) {
+      const normalizedPage = normalizeTemplatePage(page);
+
       await prisma.templatePage.upsert({
         where: {
           templateId_pageNumber: {
@@ -51,15 +77,10 @@ async function upsertTemplateWithPages(
             pageNumber: page.pageNumber,
           },
         },
-        update: {
-          textPrompt: page.textPrompt,
-          illustrationPrompt: page.illustrationPrompt,
-        },
+        update: normalizedPage,
         create: {
           templateId: existing.id,
-          pageNumber: page.pageNumber,
-          textPrompt: page.textPrompt,
-          illustrationPrompt: page.illustrationPrompt,
+          ...normalizedPage,
         },
       });
     }
@@ -75,8 +96,9 @@ async function upsertTemplateWithPages(
         pageCount: template.pageCount,
         storyPrompt: template.storyPrompt,
         illustrationStylePrompt: template.illustrationStylePrompt,
+        isActive: template.isActive ?? true,
         pages: {
-          create: pages,
+          create: pages.map(normalizeTemplatePage),
         },
       },
     });
@@ -111,6 +133,123 @@ async function main() {
   });
 
   await upsertTemplateWithPages(
+    'lost-star-no-ai-ru',
+    {
+      title: 'Потерянная звёздочка',
+      description:
+        'Мягкая волшебная сказка о том, как ребёнок помогает маленькой звезде вернуться домой.',
+      language: 'ru',
+      ageMin: 3,
+      ageMax: 7,
+      pageCount: 8,
+      storyPrompt:
+        'Детерминированный шаблон без AI: ребёнок помогает потерянной звёздочке.',
+      illustrationStylePrompt:
+        'Тёплая цифровая детская книга с мягким ночным светом и добрыми персонажами.',
+      isActive: true,
+    },
+    [
+      {
+        pageNumber: 1,
+        baseText:
+          'Однажды вечером ребёнок по имени {childName} посмотрел в окно и увидел, что одна маленькая звёздочка упала с неба.\nОна тихо светилась возле сада и будто просила о помощи.\n{childName} взял {favoriteToy} и решил вернуть звёздочку домой.',
+        illustrationPromptBase:
+          'A cozy Russian child room at night, a small glowing star near the garden, soft magical light.',
+        sceneDescription: 'Знакомство с упавшей звёздочкой.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          favoriteToy: 'Любимая игрушка',
+        },
+      },
+      {
+        pageNumber: 2,
+        baseText:
+          'Звёздочка рассказала, что сильный ветер унёс её с небесной дорожки.\nЧтобы вернуться домой, ей нужно было найти серебряный луч в месте под названием {setting}.\n{childName} улыбнулся и сказал: «Мы обязательно его найдём».',
+        illustrationPromptBase:
+          'A glowing little star speaking with a child, a magical path leading toward an enchanted setting.',
+        sceneDescription: 'Звёздочка просит найти серебряный луч.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          setting: 'Место приключения',
+        },
+      },
+      {
+        pageNumber: 3,
+        baseText:
+          'У ворот {setting} их встретил {favoriteAnimal}.\nОн сначала немного стеснялся, но звёздочка мигнула так ласково, что новый друг подошёл ближе.\nТеперь у {childName} была целая команда для доброго дела.',
+        illustrationPromptBase:
+          'A child, a small glowing star, and a friendly animal at the entrance to a magical place.',
+        sceneDescription: 'Встреча с помощником.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          setting: 'Место приключения',
+          favoriteAnimal: 'Любимое животное',
+        },
+      },
+      {
+        pageNumber: 4,
+        baseText:
+          'Дорожка привела друзей к ручью, который переливался синим и золотым.\n{childName} вспомнил, как любит {mainInterest}, и придумал смелый план.\nНужно было построить мостик из лунных камешков, чтобы звёздочка не намочила лучики.',
+        illustrationPromptBase:
+          'A moonlit stream with blue and golden reflections, a child arranging glowing moon stones.',
+        sceneDescription: 'Первое препятствие и идея ребёнка.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          mainInterest: 'Главный интерес ребёнка',
+        },
+      },
+      {
+        pageNumber: 5,
+        baseText:
+          'Мостик получился крепким, и друзья перешли на другую сторону.\nТам росли колокольчики, которые звенели только от добрых слов.\n{childName} вспомнил тёплые слова, которые часто говорит {parentName}, и цветы зазвенели серебром.',
+        illustrationPromptBase:
+          'Silver bell flowers ringing under moonlight as a child and glowing star cross a tiny bridge.',
+        sceneDescription: 'Добрые слова открывают путь дальше.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          parentName: 'Имя родителя',
+        },
+      },
+      {
+        pageNumber: 6,
+        baseText:
+          'За колокольчиками спряталась маленькая тучка.\nОна не хотела никого пугать, просто потеряла свою улыбку.\n{childName} протянул ей {favoriteToy}, и тучка рассмеялась тёплым дождиком из искорок.',
+        illustrationPromptBase:
+          'A small friendly cloud smiling after receiving a favorite toy, sparkling warm rain in a fairy-tale forest.',
+        sceneDescription: 'Ребёнок помогает грустной тучке.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          favoriteToy: 'Любимая игрушка',
+        },
+      },
+      {
+        pageNumber: 7,
+        baseText:
+          'Когда тучка улыбнулась, из-за неё выглянул серебряный луч.\nЗвёздочка подпрыгнула от радости и мягко коснулась луча.\n«Спасибо, {heroName}, ты настоящий хранитель света», — прошептала она.',
+        illustrationPromptBase:
+          'A silver moonbeam lifting a happy little star, a child glowing with warm reflected light.',
+        sceneDescription: 'Серебряный луч найден.',
+        personalizationSlots: {
+          heroName: 'Имя героя в истории',
+        },
+      },
+      {
+        pageNumber: 8,
+        baseText:
+          'Луч поднял звёздочку всё выше и выше, пока она снова не засияла на небе.\n{favoriteAnimal} помахал ей лапкой, а {childName} загадал желание о новых добрых приключениях.\nС тех пор, когда над {setting} вспыхивала самая яркая искра, {childName} знал: это звёздочка говорит спасибо.',
+        illustrationPromptBase:
+          'A little star shining in the night sky above a magical setting, a child and friendly animal waving goodbye.',
+        sceneDescription: 'Счастливое возвращение звёздочки домой.',
+        personalizationSlots: {
+          childName: 'Имя ребёнка',
+          favoriteAnimal: 'Любимое животное',
+          setting: 'Место приключения',
+        },
+      },
+    ],
+  );
+
+  await upsertTemplateWithPages(
     'kindness-adventure-ru',
     {
       title: 'Приключение о доброте',
@@ -123,6 +262,7 @@ async function main() {
         'Создай добрую детскую историю на русском языке с понятной моралью.',
       illustrationStylePrompt:
         'Теплые, мягкие иллюстрации для детской книги, дружелюбные персонажи.',
+      isActive: false,
     },
     [
       {
@@ -188,6 +328,7 @@ async function main() {
       storyPrompt: 'Создай волшебную сказку о лесном зверьке на русском языке.',
       illustrationStylePrompt:
         'Акварельные иллюстрации русского леса с милыми животными персонажами.',
+      isActive: false,
     },
     [
       {
@@ -249,6 +390,7 @@ async function main() {
       storyPrompt: 'Создай историю о космическом путешествии на русском языке.',
       illustrationStylePrompt:
         'Яркие иллюстрации космоса, планет и звёзд в детском стиле.',
+      isActive: false,
     },
     [
       {
@@ -321,6 +463,7 @@ async function main() {
         'Создай спокойную историю перед сном на русском языке с мягким сюжетом.',
       illustrationStylePrompt:
         'Мягкие, пастельные иллюстрации ночного неба и уютных сцен.',
+      isActive: false,
     },
     [
       {

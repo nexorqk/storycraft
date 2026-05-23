@@ -7,7 +7,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import type { Book, BookStatus } from '@prisma/client';
+import type { Book, BookStatus, Prisma } from '@prisma/client';
 import { FREE_PLAN_MONTHLY_BOOK_LIMIT } from '@storycraft/shared';
 
 import { JobsService } from '../jobs/jobs.service';
@@ -31,6 +31,7 @@ export type PublicBook = {
   childNameInStory: string | null;
   coverStyle: string;
   language: string;
+  personalization: Prisma.JsonValue | null;
   status: BookStatus;
   pdfObjectKey: string | null;
   errorMessage: string | null;
@@ -157,6 +158,10 @@ export class BooksService {
       { label: 'Child interests', value: child.interests },
       { label: 'Book title', value: dto.title },
       { label: 'Child name in story', value: dto.childNameInStory },
+      {
+        label: 'Personalization',
+        value: this.extractPersonalizationText(dto.personalization),
+      },
     ]);
 
     await this.enforceGenerationStartGuardrails(
@@ -164,6 +169,7 @@ export class BooksService {
       template._count?.pages || template.pageCount,
     );
 
+    const personalization = this.normalizePersonalization(dto.personalization);
     const usagePeriod = this.getCurrentFreeGenerationPeriod();
     const { book, persistentJob } = await this.prisma.$transaction(
       async (tx) => {
@@ -198,6 +204,7 @@ export class BooksService {
             childNameInStory: dto.childNameInStory?.trim() || null,
             coverStyle: dto.coverStyle ?? 'default',
             language: dto.language ?? 'ru',
+            ...(personalization ? { personalization } : {}),
           },
           include: {
             child: { select: { id: true, name: true } },
@@ -485,10 +492,9 @@ export class BooksService {
 
   private async enforceGenerationStartGuardrails(
     userId: string,
-    pageCount: number,
+    _pageCount: number,
   ) {
     this.ensureGenerationEnabled();
-    this.enforceEstimatedCostLimit(pageCount);
     await Promise.all([
       this.enforceActiveGenerationLimit(userId),
       this.enforceDailyGenerationJobLimit(userId),
@@ -501,28 +507,6 @@ export class BooksService {
     if (!enabled) {
       throw new ServiceUnavailableException(
         'Book generation is temporarily disabled',
-      );
-    }
-  }
-
-  private enforceEstimatedCostLimit(pageCount: number) {
-    const maxEstimatedCost =
-      this.config.get<number>('AI_MAX_ESTIMATED_BOOK_COST_USD') ?? 1;
-
-    if (maxEstimatedCost <= 0) {
-      return;
-    }
-
-    const textPageCost =
-      this.config.get<number>('AI_ESTIMATED_TEXT_PAGE_COST_USD') ?? 0.002;
-    const imagePageCost =
-      this.config.get<number>('AI_ESTIMATED_IMAGE_COST_USD') ?? 0.04;
-    const estimatedCost =
-      Math.max(1, pageCount) * (textPageCost + imagePageCost);
-
-    if (estimatedCost > maxEstimatedCost) {
-      throw new BadRequestException(
-        `Estimated generation cost $${estimatedCost.toFixed(2)} exceeds the configured limit.`,
       );
     }
   }
@@ -665,6 +649,52 @@ export class BooksService {
     return error instanceof Error ? error.message : 'Unknown error';
   }
 
+  private normalizePersonalization(
+    personalization: Record<string, unknown> | undefined,
+  ): Prisma.InputJsonObject | null {
+    if (!personalization) {
+      return null;
+    }
+
+    const normalized: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, value] of Object.entries(personalization)) {
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(key)) {
+        continue;
+      }
+
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          normalized[key] = trimmed;
+        }
+      } else if (typeof value === 'number' && Number.isFinite(value)) {
+        normalized[key] = value;
+      } else if (value === null) {
+        normalized[key] = null;
+      }
+    }
+
+    return Object.keys(normalized).length > 0
+      ? (normalized as Prisma.InputJsonObject)
+      : null;
+  }
+
+  private extractPersonalizationText(
+    personalization: Record<string, unknown> | undefined,
+  ): string[] {
+    if (!personalization) {
+      return [];
+    }
+
+    return Object.values(personalization)
+      .filter(
+        (value): value is string | number =>
+          typeof value === 'string' || typeof value === 'number',
+      )
+      .map((value) => String(value));
+  }
+
   private toPublicBook(
     book: Book & {
       child: { id: string; name: string };
@@ -677,6 +707,7 @@ export class BooksService {
       childNameInStory: book.childNameInStory,
       coverStyle: book.coverStyle,
       language: book.language,
+      personalization: book.personalization,
       status: book.status,
       pdfObjectKey: book.pdfObjectKey,
       errorMessage: book.errorMessage,

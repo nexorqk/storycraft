@@ -9,14 +9,13 @@ import {
   listBooks,
   deleteBook,
   getBookProgress,
-  getPdfUrl,
   getBooksUsage,
 } from '../../lib/books-api';
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Pending',
-  PROCESSING: 'Processing',
-  COMPLETED: 'Completed',
+  PROCESSING: 'Preparing',
+  COMPLETED: 'Story ready',
   FAILED: 'Failed',
 };
 
@@ -37,7 +36,6 @@ export default function BooksPage() {
       { progress: number; completedPages?: number; totalPages?: number }
     >
   >({});
-  const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{
     used: number;
     limit: number;
@@ -53,21 +51,6 @@ export default function BooksPage() {
         if (!cancelled) {
           setBooks(booksData.books);
           setUsage(usageData.usage);
-
-          const completedBooks = booksData.books.filter(
-            (b) => b.status === 'COMPLETED' && b.pdfObjectKey,
-          );
-
-          for (const book of completedBooks) {
-            getPdfUrl(book.id)
-              .then((pdfData) => {
-                if (!cancelled && pdfData.url) {
-                  setPdfUrls((prev) => ({ ...prev, [book.id]: pdfData.url! }));
-                }
-              })
-              .catch(() => {});
-          }
-
           setLoading(false);
         }
       })
@@ -155,7 +138,7 @@ export default function BooksPage() {
           <p className="eyebrow">Library</p>
           <h1>My Books</h1>
           <p className="header-copy">
-            View and manage your generated children&apos;s books.
+            View and read your personalized children&apos;s stories.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -163,7 +146,7 @@ export default function BooksPage() {
             <div className="usage-badge">
               <span className="usage-count">{usage.remaining}</span>
               <span className="usage-label">
-                {usage.remaining === 1 ? 'generation left' : 'generations left'}
+                {usage.remaining === 1 ? 'story left' : 'stories left'}
               </span>
             </div>
           )}
@@ -237,7 +220,7 @@ export default function BooksPage() {
                           {prog.completedPages != null &&
                           prog.totalPages != null
                             ? `Page ${prog.completedPages} of ${prog.totalPages}`
-                            : 'Generating...'}
+                            : 'Preparing...'}
                         </span>
                       </div>
                     </div>
@@ -248,21 +231,14 @@ export default function BooksPage() {
                   <p className="book-error">{book.errorMessage}</p>
                 )}
 
-                {book.status === 'COMPLETED' && book.pdfObjectKey && (
+                {book.status === 'COMPLETED' && (
                   <div className="card-actions">
-                    {pdfUrls[book.id] ? (
-                      <a
-                        href={pdfUrls[book.id]}
-                        className="primary-button"
-                        download
-                      >
-                        Download Book
-                      </a>
-                    ) : (
-                      <button className="primary-button" type="button" disabled>
-                        Preparing...
-                      </button>
-                    )}
+                    <a
+                      href={`/books/${book.id}/read`}
+                      className="primary-button"
+                    >
+                      Read story
+                    </a>
                   </div>
                 )}
 

@@ -1,4 +1,11 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { COVER_STYLES } from '@storycraft/shared';
 
 export class CreateBookDto {
@@ -27,4 +34,8 @@ export class CreateBookDto {
   @IsString()
   @MaxLength(10)
   language?: string;
+
+  @IsOptional()
+  @IsObject()
+  personalization?: Record<string, unknown>;
 }

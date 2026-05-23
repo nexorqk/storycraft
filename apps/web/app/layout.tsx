@@ -5,7 +5,7 @@ import { ThemeScript } from './components/theme-script';
 
 export const metadata: Metadata = {
   title: 'Storycraft',
-  description: 'AI-generated Russian children books.',
+  description: 'Personalized Russian children stories.',
 };
 
 export default function RootLayout({

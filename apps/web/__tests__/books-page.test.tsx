@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import BooksPage from '../app/books/page';
@@ -16,7 +15,6 @@ vi.mock('../lib/books-api', () => ({
   listBooks: vi.fn(),
   deleteBook: vi.fn(),
   getBookProgress: vi.fn(),
-  getPdfUrl: vi.fn(),
   getBooksUsage: vi.fn(),
 }));
 
@@ -34,8 +32,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockListBooks = vi.mocked(booksApi.listBooks);
-const mockDeleteBook = vi.mocked(booksApi.deleteBook);
-const mockGetPdfUrl = vi.mocked(booksApi.getPdfUrl);
 const mockGetBooksUsage = vi.mocked(booksApi.getBooksUsage);
 const mockFetchCurrentUser = vi.mocked(authApi.fetchCurrentUser);
 
@@ -46,8 +42,9 @@ const sampleBooks = [
     childNameInStory: null,
     coverStyle: 'default',
     language: 'ru',
+    personalization: null,
     status: 'COMPLETED' as const,
-    pdfObjectKey: 'pdfs/b1.pdf',
+    pdfObjectKey: null,
     errorMessage: null,
     completedAt: '2025-05-01T00:00:00Z',
     createdAt: '2025-04-01T00:00:00Z',
@@ -61,6 +58,7 @@ const sampleBooks = [
     childNameInStory: null,
     coverStyle: 'watercolor',
     language: 'ru',
+    personalization: null,
     status: 'PENDING' as const,
     pdfObjectKey: null,
     errorMessage: null,
@@ -76,9 +74,10 @@ const sampleBooks = [
     childNameInStory: null,
     coverStyle: 'default',
     language: 'ru',
+    personalization: null,
     status: 'FAILED' as const,
     pdfObjectKey: null,
-    errorMessage: 'AI provider error',
+    errorMessage: 'Preparation error',
     completedAt: null,
     createdAt: '2025-04-03T00:00:00Z',
     updatedAt: '2025-04-03T00:00:00Z',
@@ -99,7 +98,6 @@ describe('BooksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchCurrentUser.mockResolvedValue({ user: null });
-    mockGetPdfUrl.mockResolvedValue({ url: 'https://example.com/b1.pdf' });
   });
 
   it('shows loading state initially', () => {
@@ -115,7 +113,7 @@ describe('BooksPage', () => {
     render(<BooksPage />);
     await screen.findByText('No books yet');
     expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getByText('generations left')).toBeInTheDocument();
+    expect(screen.getByText('stories left')).toBeInTheDocument();
   });
 
   it('renders books with correct status labels', async () => {
@@ -124,7 +122,7 @@ describe('BooksPage', () => {
     render(<BooksPage />);
     await screen.findByText('Adventure Story');
 
-    expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.getByText('Story ready')).toBeInTheDocument();
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText('Failed')).toBeInTheDocument();
   });
@@ -134,18 +132,19 @@ describe('BooksPage', () => {
     mockGetBooksUsage.mockResolvedValue({ usage: sampleUsage });
     render(<BooksPage />);
     await screen.findByText('Adventure Story');
-    expect(screen.getByText('AI provider error')).toBeInTheDocument();
+    expect(screen.getByText('Preparation error')).toBeInTheDocument();
   });
 
-  it('shows download link for completed books with pdf', async () => {
+  it('shows reader link for completed books', async () => {
     mockListBooks.mockResolvedValue({ books: sampleBooks });
     mockGetBooksUsage.mockResolvedValue({ usage: sampleUsage });
     render(<BooksPage />);
     await screen.findByText('Adventure Story');
 
-    await waitFor(() => {
-      expect(mockGetPdfUrl).toHaveBeenCalledWith('b1');
-    });
+    expect(screen.getByRole('link', { name: /read story/i })).toHaveAttribute(
+      'href',
+      '/books/b1/read',
+    );
   });
 
   it('displays error state when loading fails', async () => {

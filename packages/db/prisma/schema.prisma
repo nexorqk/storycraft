@@ -146,15 +146,19 @@ model Template {
 }
 
 model TemplatePage {
-  id                 String     @id @default(uuid()) @db.Uuid
-  templateId         String     @db.Uuid
-  pageNumber         Int
-  textPrompt         String
-  illustrationPrompt String
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  template           Template   @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  bookPages          BookPage[]
+  id                     String     @id @default(uuid()) @db.Uuid
+  templateId             String     @db.Uuid
+  pageNumber             Int
+  textPrompt             String
+  illustrationPrompt     String
+  baseText               String     @default("")
+  illustrationPromptBase String?
+  sceneDescription       String?
+  personalizationSlots   Json?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  template               Template   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  bookPages              BookPage[]
 
   @@unique([templateId, pageNumber])
   @@index([templateId])
@@ -169,6 +173,7 @@ model Book {
   childNameInStory String?
   coverStyle       String         @default("default")
   language         String         @default("ru")
+  personalization  Json?
   status           BookStatus     @default(PENDING)
   pdfObjectKey     String?
   errorMessage     String?

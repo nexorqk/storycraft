@@ -18,6 +18,11 @@ type FormState = {
   language: string;
   childNameInStory: string;
   coverStyle: string;
+  favoriteToy: string;
+  favoriteAnimal: string;
+  mainInterest: string;
+  setting: string;
+  parentName: string;
 };
 
 type Step = 'select' | 'customize' | 'done' | 'error';
@@ -35,6 +40,11 @@ function CreateBookContent() {
     language: 'ru',
     childNameInStory: '',
     coverStyle: 'default',
+    favoriteToy: '',
+    favoriteAnimal: '',
+    mainInterest: '',
+    setting: '',
+    parentName: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [createdBookId, setCreatedBookId] = useState<string | null>(null);
@@ -85,6 +95,18 @@ function CreateBookContent() {
     setError(null);
 
     try {
+      const rawPersonalizationEntries: Array<[string, string]> = [
+        ['favoriteToy', form.favoriteToy],
+        ['favoriteAnimal', form.favoriteAnimal],
+        ['mainInterest', form.mainInterest],
+        ['setting', form.setting],
+        ['parentName', form.parentName],
+      ];
+      const personalizationEntries = rawPersonalizationEntries
+        .map(([key, value]) => [key, value.trim()] as const)
+        .filter(([, value]) => value.length > 0);
+      const personalization = Object.fromEntries(personalizationEntries);
+
       const result = await createBook({
         childId: form.childId,
         templateId: form.templateId,
@@ -92,6 +114,7 @@ function CreateBookContent() {
         childNameInStory: form.childNameInStory || undefined,
         coverStyle: form.coverStyle,
         language: form.language,
+        ...(Object.keys(personalization).length > 0 ? { personalization } : {}),
       });
 
       setCreatedBookId(result.book.id);
@@ -112,8 +135,8 @@ function CreateBookContent() {
             <p className="eyebrow">Success</p>
             <h1>Book Created</h1>
             <p className="header-copy">
-              Your book is being generated. You can track its progress in the
-              library.
+              Your story is being prepared from the selected template. You can
+              open it now or track progress in the library.
             </p>
           </div>
         </header>
@@ -125,6 +148,12 @@ function CreateBookContent() {
           <div className="card-actions" style={{ marginTop: 16 }}>
             <a href="/books" className="primary-button">
               Go to Library
+            </a>
+            <a
+              href={`/books/${createdBookId}/read`}
+              className="secondary-button"
+            >
+              Open story
             </a>
             <button
               className="secondary-button"
@@ -138,6 +167,11 @@ function CreateBookContent() {
                   language: 'ru',
                   childNameInStory: '',
                   coverStyle: 'default',
+                  favoriteToy: '',
+                  favoriteAnimal: '',
+                  mainInterest: '',
+                  setting: '',
+                  parentName: '',
                 });
                 setCreatedBookId(null);
               }}
@@ -157,15 +191,15 @@ function CreateBookContent() {
           <p className="eyebrow">New Book</p>
           <h1>Create a Book</h1>
           <p className="header-copy">
-            Choose a template and a child profile to start generating a Russian
-            children&apos;s book.
+            Choose a template and a child profile to prepare a personalized
+            Russian children&apos;s story.
           </p>
         </div>
         {usage && (
           <div className="usage-badge">
             <span className="usage-count">{usage.remaining}</span>
             <span className="usage-label">
-              {usage.remaining === 1 ? 'generation left' : 'generations left'}
+              {usage.remaining === 1 ? 'story left' : 'stories left'}
             </span>
           </div>
         )}
@@ -297,22 +331,6 @@ function CreateBookContent() {
               </div>
 
               <div className="field">
-                <span>Illustration style</span>
-                <select
-                  value={form.coverStyle}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, coverStyle: e.target.value }))
-                  }
-                  className="field-select"
-                >
-                  <option value="default">Default (template style)</option>
-                  <option value="watercolor">Watercolor</option>
-                  <option value="cartoon">Cartoon</option>
-                  <option value="realistic">Realistic</option>
-                </select>
-              </div>
-
-              <div className="field">
                 <span>Language</span>
                 <select
                   value={form.language}
@@ -323,6 +341,66 @@ function CreateBookContent() {
                 >
                   <option value="ru">Russian</option>
                 </select>
+              </div>
+
+              <div className="field">
+                <span>Favorite toy</span>
+                <input
+                  type="text"
+                  placeholder="e.g. плюшевого динозавра"
+                  value={form.favoriteToy}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, favoriteToy: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <span>Favorite animal</span>
+                <input
+                  type="text"
+                  placeholder="e.g. лисёнка"
+                  value={form.favoriteAnimal}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, favoriteAnimal: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <span>Main interest</span>
+                <input
+                  type="text"
+                  placeholder="e.g. космос"
+                  value={form.mainInterest}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, mainInterest: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <span>Story setting</span>
+                <input
+                  type="text"
+                  placeholder="e.g. звёздный сад"
+                  value={form.setting}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, setting: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <span>Parent name</span>
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  value={form.parentName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, parentName: e.target.value }))
+                  }
+                />
               </div>
 
               {selectedTemplate && (
@@ -368,24 +446,30 @@ function CreateBookContent() {
               </div>
               <div>
                 <dt>Title</dt>
-                <dd>{form.title || '(auto-generated)'}</dd>
+                <dd>{form.title || '(template title)'}</dd>
               </div>
               <div>
                 <dt>Name in story</dt>
                 <dd>{form.childNameInStory || selectedChild?.name || '—'}</dd>
               </div>
               <div>
-                <dt>Style</dt>
-                <dd>
-                  {form.coverStyle === 'default'
-                    ? 'Default'
-                    : form.coverStyle.charAt(0).toUpperCase() +
-                      form.coverStyle.slice(1)}
-                </dd>
-              </div>
-              <div>
                 <dt>Language</dt>
                 <dd>{form.language.toUpperCase()}</dd>
+              </div>
+              <div>
+                <dt>Personalization</dt>
+                <dd>
+                  {[
+                    form.favoriteToy,
+                    form.favoriteAnimal,
+                    form.mainInterest,
+                    form.setting,
+                    form.parentName,
+                  ]
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+                    .join(', ') || 'Template defaults'}
+                </dd>
               </div>
             </dl>
 
@@ -418,10 +502,14 @@ function CreateBookContent() {
                   <li key={page.pageNumber} className="catalog-page-item">
                     <span className="catalog-page-num">{page.pageNumber}</span>
                     <div>
-                      <p className="catalog-page-text">{page.textPrompt}</p>
-                      <p className="catalog-page-illust">
-                        🎨 {page.illustrationPrompt}
+                      <p className="catalog-page-text">
+                        {page.baseText || page.textPrompt}
                       </p>
+                      {page.sceneDescription && (
+                        <p className="catalog-page-illust">
+                          {page.sceneDescription}
+                        </p>
+                      )}
                     </div>
                   </li>
                 ))}

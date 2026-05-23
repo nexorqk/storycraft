@@ -16,6 +16,10 @@ export type AdminTemplatePage = {
   pageNumber: number;
   textPrompt: string;
   illustrationPrompt: string;
+  baseText: string;
+  illustrationPromptBase: string | null;
+  sceneDescription: string | null;
+  personalizationSlots: unknown;
   createdAt: string;
   updatedAt: string;
 };
@@ -101,6 +105,10 @@ export async function createAdminTemplatePage(
     pageNumber: number;
     textPrompt: string;
     illustrationPrompt: string;
+    baseText?: string;
+    illustrationPromptBase?: string;
+    sceneDescription?: string;
+    personalizationSlots?: Record<string, unknown>;
   },
 ) {
   return request<{ page: AdminTemplatePage }>(
@@ -119,6 +127,10 @@ export async function updateAdminTemplatePage(
     pageNumber?: number;
     textPrompt?: string;
     illustrationPrompt?: string;
+    baseText?: string;
+    illustrationPromptBase?: string;
+    sceneDescription?: string;
+    personalizationSlots?: Record<string, unknown>;
   },
 ) {
   return request<{ page: AdminTemplatePage }>(

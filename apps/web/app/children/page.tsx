@@ -10,7 +10,7 @@ export default function ChildrenPage() {
           <p className="eyebrow">Profiles</p>
           <h1>Children</h1>
           <p className="header-copy">
-            Manage child profiles used to personalize Russian story generation.
+            Manage child profiles used to personalize Russian stories.
           </p>
         </div>
         <span className="status-pill">Parent-owned</span>

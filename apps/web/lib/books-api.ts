@@ -6,6 +6,7 @@ export type BookSummary = {
   childNameInStory: string | null;
   coverStyle: string;
   language: string;
+  personalization: Record<string, unknown> | null;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   pdfObjectKey: string | null;
   errorMessage: string | null;
@@ -53,6 +54,7 @@ export async function createBook(dto: {
   childNameInStory?: string;
   coverStyle?: string;
   language?: string;
+  personalization?: Record<string, string | number | null>;
 }) {
   return request<{ book: BookSummary }>('/books', {
     method: 'POST',

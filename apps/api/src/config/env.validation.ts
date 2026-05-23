@@ -122,30 +122,6 @@ const envSchema = z
     RATE_LIMIT_LONG_LIMIT: z.coerce.number().int().positive().default(300),
   })
   .superRefine((data, ctx) => {
-    if (!data.USE_MOCK_AI) {
-      if (isPlaceholder(data.CLOUDFLARE_ACCOUNT_ID)) {
-        addProductionIssue(
-          ctx,
-          'CLOUDFLARE_ACCOUNT_ID',
-          'CLOUDFLARE_ACCOUNT_ID must be set when USE_MOCK_AI is false',
-        );
-      }
-      if (isPlaceholder(data.CLOUDFLARE_API_TOKEN)) {
-        addProductionIssue(
-          ctx,
-          'CLOUDFLARE_API_TOKEN',
-          'CLOUDFLARE_API_TOKEN must be set when USE_MOCK_AI is false',
-        );
-      }
-      if (isPlaceholder(data.OPENAI_API_KEY)) {
-        addProductionIssue(
-          ctx,
-          'OPENAI_API_KEY',
-          'OPENAI_API_KEY must be set when USE_MOCK_AI is false (required for DALL-E)',
-        );
-      }
-    }
-
     if (data.NODE_ENV !== 'production') {
       return;
     }
@@ -156,9 +132,6 @@ const envSchema = z
       'SESSION_SECRET',
       'S3_ACCESS_KEY_ID',
       'S3_SECRET_ACCESS_KEY',
-      'CLOUDFLARE_ACCOUNT_ID',
-      'CLOUDFLARE_API_TOKEN',
-      'OPENAI_API_KEY',
     ] as const;
 
     for (const key of requiredSecrets) {
@@ -176,14 +149,6 @@ const envSchema = z
         ctx,
         'SESSION_SECRET',
         'SESSION_SECRET must be at least 32 characters in production',
-      );
-    }
-
-    if (data.USE_MOCK_AI) {
-      addProductionIssue(
-        ctx,
-        'USE_MOCK_AI',
-        'USE_MOCK_AI must be false in production',
       );
     }
 
