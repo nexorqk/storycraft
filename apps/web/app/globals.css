@@ -1648,3 +1648,71 @@ h1 {
   font-size: 13px;
   margin: 0;
 }
+
+/* Admin dashboard */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-card-value {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.stat-card-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-danger {
+  border-color: var(--danger);
+}
+
+.stat-card-danger .stat-card-value {
+  color: var(--danger);
+}
+
+/* Admin sub-navigation */
+.admin-subnav {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0;
+}
+
+.admin-subnav-link {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.admin-subnav-link:hover {
+  color: var(--text);
+}
+
+.admin-subnav-link[data-active='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}

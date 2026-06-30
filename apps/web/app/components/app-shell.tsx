@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Create', href: '/create' },
   { label: 'Books', href: '/books' },
   { label: 'Settings', href: '/settings' },
+  { label: 'Admin', href: '/admin' },
 ];
 
 type AppShellProps = {
