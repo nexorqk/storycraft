@@ -89,10 +89,8 @@ export class BooksService {
   }
 
   async getBook(userId: string, bookId: string) {
-    const book = await this.findOwnedBook(userId, bookId);
-
-    const full = await this.prisma.book.findUnique({
-      where: { id: book.id },
+    const full = await this.prisma.book.findFirst({
+      where: { id: bookId, userId },
       include: {
         child: { select: { id: true, name: true } },
         template: { select: { id: true, slug: true, title: true } },
@@ -142,11 +140,6 @@ export class BooksService {
 
     const template = await this.prisma.template.findFirst({
       where: { id: dto.templateId, isActive: true },
-      include: {
-        _count: {
-          select: { pages: true },
-        },
-      },
     });
 
     if (!template) {
@@ -164,10 +157,7 @@ export class BooksService {
       },
     ]);
 
-    await this.enforceGenerationStartGuardrails(
-      userId,
-      template._count?.pages || template.pageCount,
-    );
+    await this.enforceGenerationStartGuardrails(userId);
 
     const personalization = this.normalizePersonalization(dto.personalization);
     const usagePeriod = this.getCurrentFreeGenerationPeriod();
@@ -260,7 +250,7 @@ export class BooksService {
       throw new BadRequestException('Book is already being generated');
     }
 
-    await this.enforceGenerationStartGuardrails(userId, 1);
+    await this.enforceGenerationStartGuardrails(userId);
 
     const persistentJob = await this.prisma.$transaction(async (tx) => {
       await tx.book.update({
@@ -490,10 +480,7 @@ export class BooksService {
     return book;
   }
 
-  private async enforceGenerationStartGuardrails(
-    userId: string,
-    _pageCount: number,
-  ) {
+  private async enforceGenerationStartGuardrails(userId: string) {
     this.ensureGenerationEnabled();
     await Promise.all([
       this.enforceActiveGenerationLimit(userId),
@@ -692,7 +679,7 @@ export class BooksService {
         (value): value is string | number =>
           typeof value === 'string' || typeof value === 'number',
       )
-      .map((value) => String(value));
+      .map(String);
   }
 
   private toPublicBook(

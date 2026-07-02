@@ -236,6 +236,9 @@ describe('BooksService', () => {
         },
       });
       expect(mockPrismaService.job.count).toHaveBeenCalled();
+      expect(mockPrismaService.template.findFirst).toHaveBeenCalledWith({
+        where: { id: 'template-1', isActive: true },
+      });
       expect(mockPrismaService.$queryRaw).toHaveBeenCalledTimes(1);
       expect(mockPrismaService.job.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -733,6 +736,60 @@ describe('BooksService', () => {
   });
 
   describe('getBook', () => {
+    it('loads an owned book and its content in one database query', async () => {
+      const createdAt = new Date('2026-05-01T10:00:00.000Z');
+      const updatedAt = new Date('2026-05-02T10:00:00.000Z');
+      mockPrismaService.book.findFirst.mockResolvedValue({
+        id: 'book-1',
+        title: 'Test Book',
+        childNameInStory: 'Masha',
+        coverStyle: 'watercolor',
+        language: 'ru',
+        personalization: null,
+        status: 'COMPLETED',
+        pdfObjectKey: 'books/book-1/book.pdf',
+        errorMessage: null,
+        completedAt: updatedAt,
+        createdAt,
+        updatedAt,
+        child: { id: 'child-1', name: 'Masha' },
+        template: { id: 'template-1', slug: 'adventure', title: 'Adventure' },
+        pages: [
+          {
+            id: 'page-1',
+            pageNumber: 1,
+            text: 'Once upon a time',
+            illustrationPrompt: 'A forest',
+          },
+        ],
+        illustrations: [
+          {
+            id: 'illustration-1',
+            pageId: 'page-1',
+            status: 'COMPLETED',
+            objectKey: 'books/book-1/page-1.png',
+          },
+        ],
+      });
+
+      const result = await service.getBook('user-1', 'book-1');
+
+      expect(result.id).toBe('book-1');
+      expect(result.pages).toHaveLength(1);
+      expect(result.illustrations).toHaveLength(1);
+      expect(mockPrismaService.book.findFirst).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.book.findFirst).toHaveBeenCalledWith({
+        where: { id: 'book-1', userId: 'user-1' },
+        include: {
+          child: { select: { id: true, name: true } },
+          template: { select: { id: true, slug: true, title: true } },
+          pages: { orderBy: { pageNumber: 'asc' } },
+          illustrations: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+      expect(mockPrismaService.book.findUnique).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException when book not owned', async () => {
       mockPrismaService.book.findFirst.mockResolvedValue(null);
 

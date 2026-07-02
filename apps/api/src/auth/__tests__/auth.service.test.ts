@@ -21,13 +21,14 @@ const mockJwt = {
 const mockPrisma = {
   authSession: {
     create: jest.fn(),
-    findUnique: jest.fn(),
     updateMany: jest.fn(),
+  },
+  user: {
+    findFirst: jest.fn(),
   },
 };
 
 const mockUsers = {
-  findById: jest.fn(),
   toPublicUser: jest.fn((user: unknown) => user),
 };
 
@@ -65,17 +66,40 @@ describe('AuthService', () => {
 
   it('returns null when the persisted session is revoked', async () => {
     mockJwt.verifyAsync.mockResolvedValue({ sub: 'user-1', jti: 'token-1' });
-    mockPrisma.authSession.findUnique.mockResolvedValue({
-      revokedAt: new Date(),
-      expiresAt: new Date(Date.now() + 3600_000),
-    });
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
       service.getUserFromRequest({
         cookies: { storycraft_session: 'jwt-token' },
       } as never),
     ).resolves.toBeNull();
-    expect(mockUsers.findById).not.toHaveBeenCalled();
+    expect(mockUsers.toPublicUser).not.toHaveBeenCalled();
+  });
+
+  it('loads the user and validates the session in one database query', async () => {
+    const user = { id: 'user-1', email: 'user@example.com' };
+    mockJwt.verifyAsync.mockResolvedValue({ sub: 'user-1', jti: 'token-1' });
+    mockPrisma.user.findFirst.mockResolvedValue(user);
+
+    await expect(
+      service.getUserFromRequest({
+        cookies: { storycraft_session: 'jwt-token' },
+      } as never),
+    ).resolves.toEqual(user);
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'user-1',
+        authSessions: {
+          some: {
+            tokenId: 'token-1',
+            revokedAt: null,
+            expiresAt: { gt: expect.any(Date) },
+          },
+        },
+      },
+    });
+    expect(mockUsers.toPublicUser).toHaveBeenCalledWith(user);
   });
 
   it('revokes the current session from a request cookie', async () => {

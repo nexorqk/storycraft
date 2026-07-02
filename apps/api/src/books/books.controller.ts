@@ -58,16 +58,23 @@ export class BooksController {
   ) {
     const book = await this.books.getBook(user.id, bookId);
 
-    const urls: Record<string, string> = {};
+    const urlEntries = await Promise.all(
+      book.illustrations.map(async (illustration) => {
+        if (!illustration.objectKey) {
+          return null;
+        }
 
-    for (const ill of book.illustrations) {
-      if (ill.objectKey) {
-        urls[ill.id] = await this.storage.getSignedDownloadUrl(
-          ill.objectKey,
+        const url = await this.storage.getSignedDownloadUrl(
+          illustration.objectKey,
           86400,
         );
-      }
-    }
+
+        return [illustration.id, url] as const;
+      }),
+    );
+    const urls = Object.fromEntries(
+      urlEntries.filter((entry) => entry !== null),
+    );
 
     return { urls };
   }

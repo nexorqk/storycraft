@@ -177,6 +177,12 @@ describe('Books ownership boundaries', () => {
 
       expect(prisma.book.findFirst).toHaveBeenCalledWith({
         where: { id: bookA, userId: userB },
+        include: {
+          child: { select: { id: true, name: true } },
+          template: { select: { id: true, slug: true, title: true } },
+          pages: { orderBy: { pageNumber: 'asc' } },
+          illustrations: { orderBy: { createdAt: 'asc' } },
+        },
       });
     });
   });

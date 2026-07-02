@@ -77,18 +77,24 @@ export class AuthService {
       return null;
     }
 
-    const session = await this.prisma.authSession.findUnique({
-      where: { tokenId: payload.jti },
-      select: { revokedAt: true, expiresAt: true },
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: payload.sub,
+        authSessions: {
+          some: {
+            tokenId: payload.jti,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+        },
+      },
     });
 
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+    if (!user) {
       return null;
     }
 
-    const user = await this.users.findById(payload.sub);
-
-    return user ? this.users.toPublicUser(user) : null;
+    return this.users.toPublicUser(user);
   }
 
   async revokeSessionFromRequest(request: RequestWithCookies) {
